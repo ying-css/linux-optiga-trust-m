@@ -99,7 +99,7 @@ uint8_t input_data_buffer[64] = {0x00};
  * Generated hmac
  */
 uint8_t hmac_buffer[32] = {0x00};
-
+#ifdef OPTIGA_CRYPT_HMAC_ENABLED
 static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
                                    uint16_t hmac_type,
                                    const uint8_t * secret_key,
@@ -172,14 +172,14 @@ static void _helpmenu(void)
     printf("-X            : Bypass Shielded Communication \n");
     printf("-h            : Print this help \n");
 }
-
+#endif
 
 
 int main (int argc, char **argv)
 {
-    optiga_lib_status_t return_status;
-    pal_status_t pal_return_status;
+    optiga_lib_status_t return_status = 0;
 #ifdef OPTIGA_CRYPT_HMAC_VERIFY_ENABLED
+    pal_status_t pal_return_status;
     
     struct timeval start;
     struct timeval end;

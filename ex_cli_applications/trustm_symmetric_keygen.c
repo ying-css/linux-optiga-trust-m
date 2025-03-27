@@ -80,7 +80,7 @@ void helpmenu(void)
 
 int main (int argc, char **argv)
 {
-    optiga_lib_status_t return_status;
+    optiga_lib_status_t return_status = 0;
 #ifdef OPTIGA_CRYPT_SYM_GENERATE_KEY_ENABLED
 
     struct timeval start;

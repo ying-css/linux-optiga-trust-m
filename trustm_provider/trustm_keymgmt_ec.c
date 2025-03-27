@@ -194,7 +194,7 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
                                 0x2A,0x86,0x48,0xCE,0x3D,0x02,0x01,
                                 0x06,0x05, // OID:1.3.132.0.34
                                 0x2B,0x81,0x04,0x00,0x22};
-
+#if defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED) || defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED)
     uint8_t eccheader521[] = {0x30,0x81,0x9B, // SEQUENCE
                                 0x30,0x10, //SEQUENCE
                                 0x06,0x07, // OID:1.2.840.10045.2.1
@@ -222,7 +222,7 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
                                 0x2A,0x86,0x48,0xCE,0x3D,0x02,0x01,
                                 0x06,0x09, // OID:1.3.36.3.3.2.8.1.1.13
                                 0x2B,0x24,0x03,0x03,0x02,0x08,0x01,0x01,0x0d}; 
-
+#endif
 
     trustm_ec_key = OPENSSL_zalloc(sizeof(trustm_ec_key_t));
     if (trustm_ec_key == NULL)

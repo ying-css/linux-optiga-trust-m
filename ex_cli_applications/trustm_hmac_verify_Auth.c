@@ -176,7 +176,7 @@ uint8_t hmac_buffer[32] = {0x00};
 
 int main (int argc, char **argv)
 {
-    optiga_lib_status_t return_status;
+    optiga_lib_status_t return_status = 0;
 
 #ifdef OPTIGA_CRYPT_HMAC_VERIFY_ENABLED
     struct timeval start;
