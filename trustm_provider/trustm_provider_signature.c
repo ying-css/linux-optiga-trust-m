@@ -158,8 +158,10 @@ static int rsa_signature_scheme_init(trustm_signature_ctx_t *trustm_signature_ct
     else if ((strcasecmp("SHA384", mdname) == 0) || (strcasecmp("SHA2-384", mdname) == 0))
         trustm_signature_ctx->rsa_sign_scheme = OPTIGA_RSASSA_PKCS1_V15_SHA384;
 
+#ifdef OPTIGA_CRYPT_RSA_SSA_SHA512_ENABLED
     else if ((strcasecmp("SHA512", mdname) == 0) || (strcasecmp("SHA2-512", mdname) == 0))
         trustm_signature_ctx->rsa_sign_scheme = OPTIGA_RSASSA_PKCS1_V15_SHA512;
+#endif
 
     else 
     {
@@ -269,14 +271,23 @@ static int trustm_ecdsa_signature_sign(void *ctx, unsigned char *sig, size_t *si
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
 
+    printf("Signing with ECDSA key at key id %d\n", trustm_signature_ctx->trustm_ec_key->private_key_id);
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
     TRUSTM_PROVIDER_DBGFN(">");
 
-    int byte_string_offset = (trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1
-                            || trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521) 
-                              ? 3 : 2;
-
+    int byte_string_offset;
+    switch (trustm_signature_ctx->trustm_ec_key->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+            byte_string_offset = 3;
+            break;
+    #endif
+        default:
+            byte_string_offset = 2;
+            break;
+    }
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
     trustm_signature_ctx->me_crypt = me_crypt;
 
@@ -593,10 +604,19 @@ static int trustm_ecdsa_signature_digest_sign_final(void *ctx, unsigned char *si
     trustm_signature_ctx->me_crypt = me_crypt;
 
     digest_size = DIGEST_SIZE;
-    int byte_string_offset = (trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1
-                            || trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521)
-                            ? 3 : 2;
 
+    int byte_string_offset;
+    switch (trustm_signature_ctx->trustm_ec_key->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+            byte_string_offset = 3;
+            break;
+    #endif
+        default:
+            byte_string_offset = 2;
+            break;
+    }
     optiga_lib_status = OPTIGA_LIB_BUSY;
     return_status = optiga_crypt_ecdsa_sign(trustm_signature_ctx->me_crypt,
                                         trustm_signature_ctx->digest_data->digest,
@@ -825,10 +845,19 @@ static int trustm_ecdsa_signature_digest_sign(void *ctx, unsigned char *sig, siz
     }
 
     digest_size = DIGEST_SIZE;
-    int byte_string_offset = (trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1
-                            || trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521)
-                            ? 3 : 2;
 
+    int byte_string_offset;
+    switch (trustm_signature_ctx->trustm_ec_key->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+            byte_string_offset = 3;
+            break;
+    #endif
+        default:
+            byte_string_offset = 2;
+            break;
+    }
     optiga_lib_status = OPTIGA_LIB_BUSY;
     return_status = optiga_crypt_ecdsa_sign(trustm_signature_ctx->me_crypt,
                                         trustm_signature_ctx->digest_data->digest,
@@ -1073,28 +1102,23 @@ static int trustm_ecdsa_signature_digest_verify_final(void *ctx, const unsigned 
 
     pubkey_buffer[0] = 0x03;
 
-    if (trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521
-        || trustm_signature_ctx->trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)
-    {
-        pubkey_buffer[1] = 0x81;
-        pubkey_buffer[2] = uncompressed_pubkey_buffer_length + 1;
-        pubkey_buffer[3] = 0x00;
-
-        // copy uncompressed form to buffer 
-        memcpy(pubkey_buffer+4, uncompressed_pubkey_buffer, uncompressed_pubkey_buffer_length);
-
-        pubkey_buffer_length = uncompressed_pubkey_buffer_length + 4;
-    }
-
-    else 
-    {
-        pubkey_buffer[1] = uncompressed_pubkey_buffer_length + 1;
-        pubkey_buffer[2] = 0x00;
-
-        // copy uncompressed form to buffer
-        memcpy(pubkey_buffer+3, uncompressed_pubkey_buffer, uncompressed_pubkey_buffer_length);   
-    
-        pubkey_buffer_length = uncompressed_pubkey_buffer_length + 3;
+    switch (trustm_signature_ctx->trustm_ec_key->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+            pubkey_buffer[1] = 0x81;
+            pubkey_buffer[2] = uncompressed_pubkey_buffer_length + 1;
+            pubkey_buffer[3] = 0x00;
+            memcpy(pubkey_buffer + 4, uncompressed_pubkey_buffer, uncompressed_pubkey_buffer_length);
+            pubkey_buffer_length = uncompressed_pubkey_buffer_length + 4;
+            break;
+    #endif
+        default:
+            pubkey_buffer[1] = uncompressed_pubkey_buffer_length + 1;
+            pubkey_buffer[2] = 0x00;
+            memcpy(pubkey_buffer + 3, uncompressed_pubkey_buffer, uncompressed_pubkey_buffer_length);
+            pubkey_buffer_length = uncompressed_pubkey_buffer_length + 3;
+            break;
     }
 
     // free temp buffer
@@ -1172,8 +1196,10 @@ static int trustm_rsa_signature_set_ctx_params(void *ctx, const OSSL_PARAM param
              else if (strcasecmp("SHA384", p->data) == 0)
                 trustm_signature_ctx->rsa_sign_scheme = OPTIGA_RSASSA_PKCS1_V15_SHA384;
 
+#ifdef OPTIGA_CRYPT_RSA_SSA_SHA512_ENABLED
             else if (strcasecmp("SHA512", p->data) == 0)
                 trustm_signature_ctx->rsa_sign_scheme = OPTIGA_RSASSA_PKCS1_V15_SHA512;
+#endif
 
             else 
             {
@@ -1262,9 +1288,11 @@ static int trustm_signature_get_ctx_params(void *ctx, OSSL_PARAM params[])
             oid = OBJ_nid2obj(NID_sha384WithRSAEncryption);
             break;
 
+#ifdef OPTIGA_CRYPT_RSA_SSA_SHA512_ENABLED
         case OPTIGA_RSASSA_PKCS1_V15_SHA512:
             oid = OBJ_nid2obj(NID_sha512WithRSAEncryption);
             break;
+#endif
 
         default:
             return 0;

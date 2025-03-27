@@ -131,9 +131,12 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
         else if (strcasecmp("P-384", p->data) == 0)
             trustm_ec_gen_ctx->key_curve = OPTIGA_ECC_CURVE_NIST_P_384;
 
+#ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
         else if (strcasecmp("P-521", p->data) == 0)
             trustm_ec_gen_ctx->key_curve = OPTIGA_ECC_CURVE_NIST_P_521;
+#endif
         
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
         else if (strcasecmp("brainpoolP256r1", p->data) == 0)
             trustm_ec_gen_ctx->key_curve = OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1;
 
@@ -142,6 +145,7 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
 
         else if (strcasecmp("brainpoolP512r1", p->data) == 0)
             trustm_ec_gen_ctx->key_curve = OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1;
+#endif
         
         else 
         {
@@ -258,6 +262,7 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
         
         break;
 
+#ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
         case OPTIGA_ECC_CURVE_NIST_P_521:
         trustm_ec_key->public_key_header_length = sizeof(eccheader521);
 
@@ -265,7 +270,9 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
             trustm_ec_key->public_key[i] = eccheader521[i];
         
         break;
+#endif
 
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
         case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
         trustm_ec_key->public_key_header_length = sizeof(eccheaderBrainPool256);
 
@@ -289,6 +296,7 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
             trustm_ec_key->public_key[i] = eccheaderBrainPool512[i];
         
         break;
+#endif
     }
 
     optiga_lib_status = OPTIGA_LIB_BUSY;
@@ -319,9 +327,28 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
         return NULL;
     } 
 
-    uint16_t public_id = ((trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521) || (trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)) ?
-                                (trustm_ec_key->private_key_id + 0x10EF) : (trustm_ec_key->private_key_id + 0x10E0);
-    
+    uint16_t public_id;
+    switch (trustm_ec_key->key_curve) {
+        case OPTIGA_ECC_CURVE_NIST_P_256:
+        case OPTIGA_ECC_CURVE_NIST_P_384:
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1:
+    #endif
+            public_id = trustm_ec_key->private_key_id + 0x10E0;
+            break;
+    #ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+    #endif
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+    #endif
+            public_id = trustm_ec_key->private_key_id + 0x10EF;
+            break;
+        default:
+            public_id = trustm_ec_key->private_key_id + 0x10E0; 
+            break;
+    }   
     printf("Saving public EC key to OID : 0x%.4X ...\n", public_id);
 
     optiga_lib_status = OPTIGA_LIB_BUSY;
@@ -417,17 +444,27 @@ static int trustm_ec_keymgmt_get_params(void *keydata, OSSL_PARAM params[])
     {
         int sec_bits;
 
-        if (trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1 
-            || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521)
-            sec_bits = 256;
-
-        else if (trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1 
-            || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_384)
-            sec_bits = 192;
-
-        else
-            sec_bits = 128;
-
+        switch(trustm_ec_key->key_curve) {
+        #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+            case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+        #endif
+        #ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
+            case OPTIGA_ECC_CURVE_NIST_P_521:
+        #endif
+        #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)        
+                sec_bits = 256;
+                break;
+        #endif        
+        #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+            case OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1:
+        #endif
+            case OPTIGA_ECC_CURVE_NIST_P_384:
+                sec_bits = 192;
+                break;
+            default:
+                sec_bits = 128;
+                break;
+            }
         if (!OSSL_PARAM_set_int(p, sec_bits))
             return 0;
     }

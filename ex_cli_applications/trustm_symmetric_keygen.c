@@ -81,6 +81,7 @@ void helpmenu(void)
 int main (int argc, char **argv)
 {
     optiga_lib_status_t return_status;
+#ifdef OPTIGA_CRYPT_SYM_GENERATE_KEY_ENABLED
 
     struct timeval start;
     struct timeval end;
@@ -203,5 +204,6 @@ int main (int argc, char **argv)
     printf("========================================================\n");
     trustm_Close();
     trustm_hibernate_flag = 0; // Disable hibernate Context Save
+#endif
     return return_status;
 }

@@ -558,6 +558,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
         
         break;
 
+    #ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
         case OPTIGA_ECC_CURVE_NIST_P_521:
         public_key_header_length = sizeof(eccheader521);
 
@@ -565,7 +566,8 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
             public_key[i] = eccheader521[i];
         
         break;
-
+    #endif
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
         case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
         public_key_header_length = sizeof(eccheaderBrainPool256);
 
@@ -589,6 +591,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
             public_key[i] = eccheaderBrainPool512[i];
         
         break;
+    #endif
     }
 
     optiga_lib_status = OPTIGA_LIB_BUSY;
@@ -615,8 +618,18 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
         return 0;
     } 
 
-    uint16_t public_id = ((trustm_object_ctx->key_curve == OPTIGA_ECC_CURVE_NIST_P_521) || (trustm_object_ctx->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)) ?
-                                (trustm_object_ctx->key_id + 0x10EF) : (trustm_object_ctx->key_id + 0x10E0);
+    uint16_t public_id;
+    switch (trustm_object_ctx->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED) || defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED)
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+            public_id = trustm_object_ctx->key_id + 0x10EF;
+            break;
+    #endif
+        default:
+            public_id = trustm_object_ctx->key_id + 0x10E0;
+            break;
+    }
     
     printf("Saving public EC key to OID : 0x%.4X ...\n", public_id);
 
@@ -729,11 +742,18 @@ static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OS
     trustm_ec_key->key_curve = oidMetadata.E0_algo;
     trustm_ec_key->key_usage = oidMetadata.E1_keyUsage;
 
-    if (trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_521 || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)
-        public_key_offset = 0x10EF;
+    switch (trustm_object_ctx->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED) || defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED)
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+            public_id = trustm_object_ctx->key_id + 0x10EF;
+            break;
+    #endif
+        default:
+            public_id = trustm_object_ctx->key_id + 0x10E0;
+            break;
+    }
     
-    else 
-        public_key_offset = 0x10E0;
 
         // reading out contents in oid
     bytes_to_read = sizeof(read_data_buffer);
@@ -783,6 +803,7 @@ static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OS
         }
         break;    
 
+#ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
     case OPTIGA_ECC_CURVE_NIST_P_521:
         if (memcmp((void *)read_data_buffer, (void *)eccheader521, sizeof(eccheader521)))
         {
@@ -790,7 +811,8 @@ static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OS
             return 0;
         }
         break;
-
+#endif
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
     case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
         if (memcmp((void *)read_data_buffer, (void *)eccheaderBrainPool256, sizeof(eccheaderBrainPool256)))
         {
@@ -814,6 +836,7 @@ static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OS
             return 0;
         }
         break;
+#endif
     }
 
     // filling the ec key structure with data

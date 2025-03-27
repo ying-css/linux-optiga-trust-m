@@ -80,6 +80,7 @@ int main (int argc, char **argv)
 {
     optiga_lib_status_t return_status;
 
+#ifdef OPTIGA_CRYPT_SYM_ENCRYPT_ENABLED
     struct timeval start;
     struct timeval end;
     double time_taken;
@@ -492,5 +493,6 @@ int main (int argc, char **argv)
 
     trustm_Close();
     trustm_hibernate_flag = 0; // Disable hibernate Context Save
+#endif
     return return_status;
 }

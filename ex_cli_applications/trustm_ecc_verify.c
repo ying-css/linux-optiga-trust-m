@@ -333,22 +333,42 @@ int main (int argc, char **argv)
             printf("Pub key : [%d]\n",pubkeySize);
             trustmHexDump((pubkey),pubkeyLen);
                       
-            if(pubkeySize == 256){
-            if(nid == NID_brainpoolP256r1){
-                pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1;}
-            else{
-                pubkeySize = OPTIGA_ECC_CURVE_NIST_P_256;}
-            }
-            else if(pubkeySize == 384){
-            if(nid == NID_brainpoolP384r1){
-                pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1;}
-            else{
-                pubkeySize = OPTIGA_ECC_CURVE_NIST_P_384;}
-            }
-            else if(pubkeySize == 512){
-                pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1;}
-            else{
-                pubkeySize = OPTIGA_ECC_CURVE_NIST_P_521;}
+            switch (pubkeySize) {
+                case 256:
+            #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+                    if (nid == NID_brainpoolP256r1) {
+                        pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1;
+                    } else {
+                        pubkeySize = OPTIGA_ECC_CURVE_NIST_P_256;
+                    }
+            #else
+                    pubkeySize = OPTIGA_ECC_CURVE_NIST_P_256; // Fallback if Brainpool not enabled
+            #endif
+                    break;
+                case 384:
+            #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+                    if (nid == NID_brainpoolP384r1) {
+                        pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1;
+                    } else {
+                        pubkeySize = OPTIGA_ECC_CURVE_NIST_P_384;
+                    }
+            #else
+                    pubkeySize = OPTIGA_ECC_CURVE_NIST_P_384; // Fallback if Brainpool not enabled
+            #endif
+                    break;
+            #if defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED) || defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED)
+                case 512:
+                    if (nid == NID_brainpoolP512r1) {
+                        pubkeySize = OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1;
+                    } else {
+                        pubkeySize = OPTIGA_ECC_CURVE_NIST_P_521;
+                    }
+                    break;
+            #endif
+                default:
+                        pubkeySize = OPTIGA_ECC_CURVE_NIST_P_256;
+                        break;
+            }           
 
             public_key_details.public_key = pubkey;
             public_key_details.length = pubkeyLen;

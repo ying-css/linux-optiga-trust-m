@@ -179,6 +179,7 @@ int main (int argc, char **argv)
 {
     optiga_lib_status_t return_status;
     pal_status_t pal_return_status;
+#ifdef OPTIGA_CRYPT_HMAC_VERIFY_ENABLED
     
     struct timeval start;
     struct timeval end;
@@ -624,5 +625,6 @@ int main (int argc, char **argv)
 
     trustm_Close();
     trustm_hibernate_flag = 0; // Disable hibernate Context Save
+#endif
     return return_status;
 }

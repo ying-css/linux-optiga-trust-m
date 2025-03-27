@@ -84,6 +84,7 @@ void helpmenu(void)
     printf("-X            : Bypass Shielded Communication \n");
     printf("-h            : Print this help \n");
 }
+#ifdef OPTIGA_CRYPT_HMAC_VERIFY_ENABLED
 static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
                                    uint16_t hmac_type,
                                    const uint8_t * secret_key,
@@ -136,6 +137,7 @@ pal_status_t CalcHMAC(const uint8_t * secret_key,
                           input_data_length,
                           hmac));
 }
+#endif
 
 pal_status_t pal_return_status;
 uint16_t offset, bytes_to_read,bytes_to_read1;
@@ -176,6 +178,7 @@ int main (int argc, char **argv)
 {
     optiga_lib_status_t return_status;
 
+#ifdef OPTIGA_CRYPT_HMAC_VERIFY_ENABLED
     struct timeval start;
     struct timeval end;
     double time_taken;
@@ -486,5 +489,6 @@ int main (int argc, char **argv)
     printf("========================================================\n");
     trustm_Close();
     trustm_hibernate_flag = 0; // Disable hibernate Context Save
+#endif
     return return_status;
 }

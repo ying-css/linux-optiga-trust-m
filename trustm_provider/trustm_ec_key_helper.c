@@ -19,9 +19,12 @@ int trustm_ecc_curve_to_nid(optiga_ecc_curve_t curve)
     case OPTIGA_ECC_CURVE_NIST_P_384:
         return NID_secp384r1;
 
+#ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
     case OPTIGA_ECC_CURVE_NIST_P_521:
         return NID_secp521r1;
+#endif
 
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
     case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
         return NID_brainpoolP256r1;
 
@@ -30,6 +33,7 @@ int trustm_ecc_curve_to_nid(optiga_ecc_curve_t curve)
 
     case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
         return NID_brainpoolP512r1;
+#endif
 
     default:
         return NID_undef;
@@ -46,9 +50,12 @@ optiga_ecc_curve_t trustm_nid_to_ecc_curve(int nid)
     case NID_secp384r1:
         return OPTIGA_ECC_CURVE_NIST_P_384;
 
+#ifdef OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED
     case NID_secp521r1:
         return OPTIGA_ECC_CURVE_NIST_P_521;
+#endif
 
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
     case NID_brainpoolP256r1:
         return OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1;
 
@@ -57,6 +64,7 @@ optiga_ecc_curve_t trustm_nid_to_ecc_curve(int nid)
 
     case NID_brainpoolP512r1:
         return OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1;
+#endif
 
     default:
         return 0;
@@ -76,18 +84,21 @@ int trustm_ecc_public_key_to_point(trustm_ec_key_t *trustm_ec_key)
     int res = 0;
     int tolen;
 
-    if (trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_256 || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_NIST_P_384
-        || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1 || trustm_ec_key->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1)
-    {
-        uncompressed_buff_length = trustm_ec_key->public_key[trustm_ec_key->public_key_header_length + 1] - 1;
-        memcpy(uncompressed_buff, (trustm_ec_key->public_key + trustm_ec_key->public_key_header_length + 3), uncompressed_buff_length);
-    }
+      switch (trustm_ec_key->key_curve) {
+        case OPTIGA_ECC_CURVE_NIST_P_256:
+        case OPTIGA_ECC_CURVE_NIST_P_384:
+#ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1:
+#endif
+          uncompressed_buff_length = trustm_ec_key->public_key[trustm_ec_key->public_key_header_length + 1] - 1;
+          memcpy(uncompressed_buff, (trustm_ec_key->public_key + trustm_ec_key->public_key_header_length + 3), uncompressed_buff_length);
 
-    else 
-    {
-        uncompressed_buff_length = trustm_ec_key->public_key[trustm_ec_key->public_key_header_length + 2] - 1;
-        memcpy(uncompressed_buff, (trustm_ec_key->public_key + trustm_ec_key->public_key_header_length + 4), uncompressed_buff_length);
-    }
+        default:
+          uncompressed_buff_length = trustm_ec_key->public_key[trustm_ec_key->public_key_header_length + 2] - 1;
+          memcpy(uncompressed_buff, (trustm_ec_key->public_key + trustm_ec_key->public_key_header_length + 4), uncompressed_buff_length);
+          break;
+      }
 
     if ((group = EC_GROUP_new_by_curve_name(trustm_ecc_curve_to_nid(trustm_ec_key->key_curve))) == NULL
         || (point = EC_POINT_new(group)) == NULL

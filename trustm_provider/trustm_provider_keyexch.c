@@ -94,30 +94,24 @@ static int trustm_keyexch_set_peer(void *ctx, void *provkey)
 
     trustm_keyexch_ctx->peer_buffer[0] = 0x03;
     TRUSTM_PROVIDER_DBGFN(">");
-    if (peerkey->key_curve == OPTIGA_ECC_CURVE_NIST_P_521 
-            || peerkey->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)
-    {
-        trustm_keyexch_ctx->peer_buffer[1] = 0x81;
-        trustm_keyexch_ctx->peer_buffer[2] = uncompressed_peerkey_buffer_length + 1;
-        trustm_keyexch_ctx->peer_buffer[3] = 0x00;
-
-        // copy uncompressed form into buffer
-        memcpy(trustm_keyexch_ctx->peer_buffer+4, uncompressed_peerkey_buffer, uncompressed_peerkey_buffer_length);
-
-        trustm_keyexch_ctx->peer_buffer_length = uncompressed_peerkey_buffer_length + 4;
+    switch (peerkey->key_curve) {
+    #if defined(OPTIGA_CRYPT_ECC_NIST_P_521_ENABLED) || defined(OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED)
+        case OPTIGA_ECC_CURVE_NIST_P_521:
+        case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
+            trustm_keyexch_ctx->peer_buffer[1] = 0x81;
+            trustm_keyexch_ctx->peer_buffer[2] = uncompressed_peerkey_buffer_length + 1;
+            trustm_keyexch_ctx->peer_buffer[3] = 0x00;
+            memcpy(trustm_keyexch_ctx->peer_buffer + 4, uncompressed_peerkey_buffer, uncompressed_peerkey_buffer_length);
+            trustm_keyexch_ctx->peer_buffer_length = uncompressed_peerkey_buffer_length + 4;
+            break;
+    #endif
+        default:
+            trustm_keyexch_ctx->peer_buffer[1] = uncompressed_peerkey_buffer_length + 1;
+            trustm_keyexch_ctx->peer_buffer[2] = 0x00;
+            memcpy(trustm_keyexch_ctx->peer_buffer + 3, uncompressed_peerkey_buffer, uncompressed_peerkey_buffer_length);
+            trustm_keyexch_ctx->peer_buffer_length = uncompressed_peerkey_buffer_length + 3;
+            break;
     }
-
-    else 
-    {
-        trustm_keyexch_ctx->peer_buffer[1] = uncompressed_peerkey_buffer_length + 1;
-        trustm_keyexch_ctx->peer_buffer[2] = 0x00;
-
-        // copy uncompressed form into buffer
-        memcpy(trustm_keyexch_ctx->peer_buffer+3, uncompressed_peerkey_buffer, uncompressed_peerkey_buffer_length);
-
-        trustm_keyexch_ctx->peer_buffer_length = uncompressed_peerkey_buffer_length + 3;
-    }
-
     trustm_keyexch_ctx->peer_curve = peerkey->key_curve;
     
     OPENSSL_free(uncompressed_peerkey_buffer);
@@ -161,19 +155,29 @@ static int trustm_keyexch_derive_kdf(trustm_keyexch_ctx_t *trustm_keyexch_ctx, u
     peer_public_key_details.length = trustm_keyexch_ctx->peer_buffer_length;
     peer_public_key_details.key_type = trustm_keyexch_ctx->peer_curve;
 
-    if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_NIST_P_256 
-        || trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1)
+    switch(trustm_keyexch_ctx->peer_curve) {
+      case OPTIGA_ECC_CURVE_NIST_P_256:
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
+    #endif
         shared_secret_length = 32;
-
-    else if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_NIST_P_384 
-        || trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1)
+        break;
+      case OPTIGA_ECC_CURVE_NIST_P_384:
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1:
+    #endif
         shared_secret_length = 48;
-
-    else if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)
+        break;
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
         shared_secret_length = 64;
+        break;
+    #endif
+      default:
+        shared_secret_length=66;
+        break;
+    }
 
-    else 
-        shared_secret_length = 66;
 
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
     trustm_keyexch_ctx->me_crypt = me_crypt;
@@ -247,19 +251,28 @@ static int trustm_keyexch_derive_plain(trustm_keyexch_ctx_t *trustm_keyexch_ctx,
     peer_public_key_details.length = trustm_keyexch_ctx->peer_buffer_length;
     peer_public_key_details.key_type = trustm_keyexch_ctx->peer_curve;
 
-    if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_NIST_P_256 
-        || trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1)
+    switch(trustm_keyexch_ctx->peer_curve) {
+      case OPTIGA_ECC_CURVE_NIST_P_256:
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_256R1:
+    #endif
         shared_secret_length = 32;
-
-    else if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_NIST_P_384 
-        || trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1)
+        break;
+      case OPTIGA_ECC_CURVE_NIST_P_384:
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_384R1:
+    #endif
         shared_secret_length = 48;
-
-    else if (trustm_keyexch_ctx->peer_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)
+        break;
+    #ifdef OPTIGA_CRYPT_ECC_BRAINPOOL_P_R1_ENABLED
+      case OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1:
         shared_secret_length = 64;
-
-    else 
-        shared_secret_length = 66;
+        break;
+    #endif
+      default:
+        shared_secret_length=66;
+        break;
+    }
 
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
     trustm_keyexch_ctx->me_crypt = me_crypt;
