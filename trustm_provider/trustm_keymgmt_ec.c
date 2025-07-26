@@ -103,7 +103,7 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
     trustm_ec_gen_ctx_t *trustm_ec_gen_ctx = ctx;
     const OSSL_PARAM *p;
     TRUSTM_PROVIDER_DBGFN(">");
-    int strtol_ret = 0;
+    //int strtol_ret = 0;
     char grp_name[32] = {0}; 
     char *grp_name_tmp = grp_name;
     char *keyId_str     = NULL;
@@ -167,7 +167,6 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
     }
     else {
         char *hex_start = keyId_str;
-        char *endptr;
         errno = 0;
         uint32_t key_id;
         const char needle[3] = "0x";
@@ -177,7 +176,6 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
         TRUSTM_PROVIDER_ERRFN("Key ID does not start with '0x': %s\n", keyId_str);
         return 0; 
         }
-
         //trustm_ec_gen_ctx->private_key_id = DEFAULT_EC_KEY_ID;
         sscanf(hex_start, "%x", &key_id);
         trustm_ec_gen_ctx->private_key_id = key_id;

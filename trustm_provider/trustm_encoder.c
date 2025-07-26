@@ -645,27 +645,13 @@ const OSSL_DISPATCH trustm_ec_encoder_text_functions[] = {
     { 0, NULL }
 };
 
-static void print_hex_buffer(const char *prefix, const unsigned char *buf, size_t len) {
-    char hex_str[256] = {0}; 
-    if (len * 3 + 1 > sizeof(hex_str)) {
-        TRUSTM_PROVIDER_DBGFN("Error: Buffer too large for hex string");
-        return;
-    }
-    for (size_t i = 0; i < len; i++) {
-        char hex[4];
-        snprintf(hex, sizeof(hex), "%02x%s", buf[i], i < len - 1 ? ":" : "");
-        strncat(hex_str, hex, sizeof(hex_str) - strlen(hex_str) - 1);
-    }
-    TRUSTM_PROVIDER_DBGFN("%s: %s", prefix, hex_str);
-}
 static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_t *trustm_ec_key) 
 {
     int curve_nid;
     EVP_PKEY *pkey = NULL;
+    EC_KEY *ec_key = NULL;
     BIGNUM *priv_bn = NULL;
-    void *pubbuff = NULL;
-    size_t pubsize;
-    //unsigned char privkey[66]               = {0}; /*max key bits 521 */
+    BIGNUM *x = NULL, *y = NULL;
     unsigned char *privkey = NULL;
     size_t private_key_len                  = sizeof(privkey);
     int ret = 0;
@@ -680,8 +666,6 @@ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_
         TRUSTM_PROVIDER_DBGFN("Error: Invalid curve NID");
         return 0;
     }
-    pubsize = trustm_ec_point_to_uncompressed_buffer(trustm_ec_key, &pubbuff);
-    print_hex_buffer("Public Key", pubbuff, pubsize);
     switch (curve_nid) {
         case NID_X9_62_prime256v1: /* P-256 */
             private_key_len = 32;
@@ -705,24 +689,48 @@ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_
             TRUSTM_PROVIDER_DBGFN("Error: Unsupported curve");
             return 0;
     }   
+    ec_key = EC_KEY_new_by_curve_name(curve_nid); 
+    if (!ec_key) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create EC_KEY");
+        goto err;
+    }
+    // Set public key using x and y coordinates
+    x = BN_bin2bn(trustm_ec_key->x, trustm_ec_key->point_x_buffer_length, NULL);
+    y = BN_bin2bn(trustm_ec_key->y, trustm_ec_key->point_y_buffer_length, NULL);
+    if (!x || !y) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUMs for x, y coordinates");
+        goto err;
+    }
+    if (!EC_KEY_set_public_key_affine_coordinates(ec_key, x, y)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to set public key coordinates");
+        goto err;
+    }
+     privkey = OPENSSL_zalloc(private_key_len);
+     uint16_t key_id = (uint16_t)trustm_ec_key->private_key_id;
+     privkey[0] = (key_id >> 8) & 0xFF; // High byte
+     privkey[1] = key_id & 0xFF;        // Low byte
      
-    pkey = EVP_EC_gen(curve_nid);
+    priv_bn = BN_bin2bn(privkey, private_key_len, NULL);
+    if (!priv_bn) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUM for private key");
+        goto err;
+    }
+    if (!EC_KEY_set_private_key(ec_key, priv_bn)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to set private key");
+        goto err;
+    }
+
+    pkey = EVP_PKEY_new();
     if (!pkey) {
         TRUSTM_PROVIDER_DBGFN("Error: Failed to create EVP_PKEY");
         goto err;
     }
-
-     // To do: Set public key 
-
-     // Create private key reference with private_key_id in the last two bytes
-     
-     privkey = OPENSSL_zalloc(private_key_len);
-
-     uint16_t key_id = (uint16_t)trustm_ec_key->private_key_id;
-     privkey[private_key_len - 1] = (key_id >> 8) & 0xFF; // High byte
-     privkey[private_key_len - 2] = key_id & 0xFF;        // Low byte
-     
-    // To do: Set private key 
+    if (!EVP_PKEY_assign_EC_KEY(pkey, ec_key)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to assign EC_KEY to EVP_PKEY");
+        EVP_PKEY_free(pkey);
+        goto err;
+    }
+    ec_key = NULL; 
     // Write into key.pem
     if (!PEM_write_bio_PrivateKey(bout, pkey, NULL, NULL, 0, NULL, NULL)) {
         goto err;
@@ -733,7 +741,6 @@ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_
 err:
     BN_free(priv_bn);
     OPENSSL_free(privkey);
-    OPENSSL_free(pubbuff);
     EVP_PKEY_free(pkey);
     return ret;
 }

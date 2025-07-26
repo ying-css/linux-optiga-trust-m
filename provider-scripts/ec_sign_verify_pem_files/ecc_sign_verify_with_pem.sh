@@ -5,9 +5,9 @@ rm *.sig
 
 echo "Generate new ECC256 keypair"
 #~ openssl pkey -provider trustm_provider -provider default -propquery provider=trustm -in 0xe0f1:*:NEW:0x03:0x13 -out key.pem
-#~ openssl ecparam --provider trustm_provider --provider default -name prime256v1:0xe0f1 -genkey -out ecckey_ref.pem
-openssl ecparam --provider trustm_provider --provider default -name prime256v1:0xe0f1:*:0x13 -genkey -out ecckey.pem
-echo "Display the customized key file"
+openssl ecparam --provider trustm_provider --provider default -name prime256v1:0xe0f3 -genkey -out ecckey.pem
+#~ openssl ecparam --provider trustm_provider --provider default -name prime256v1:0xe0f1:*:0x13 -genkey -out ecckey.pem
+#~ echo "Display the customized key file"
 openssl ec -in ecckey.pem -text
 
 
