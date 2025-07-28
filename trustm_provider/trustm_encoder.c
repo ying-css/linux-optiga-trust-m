@@ -13,6 +13,11 @@
 #include <openssl/asn1t.h>
 #include <openssl/bio.h>
 
+#include <openssl/param_build.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/ec.h>
+
 #include "trustm_helper.h"
 #include "trustm_provider_common.h"
 #include "trustm_ec_key_helper.h"
@@ -644,20 +649,21 @@ const OSSL_DISPATCH trustm_ec_encoder_text_functions[] = {
     { OSSL_FUNC_ENCODER_ENCODE, (void(*)(void))trustm_ec_encoder_encode_text },
     { 0, NULL }
 };
-
 static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_t *trustm_ec_key) 
 {
     int curve_nid;
     EVP_PKEY *pkey = NULL;
-    EC_KEY *ec_key = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    OSSL_PARAM_BLD *param_bld = NULL;
+    OSSL_PARAM *params = NULL;
     BIGNUM *priv_bn = NULL;
     BIGNUM *x = NULL, *y = NULL;
     unsigned char *privkey = NULL;
-    size_t private_key_len                  = sizeof(privkey);
+    size_t private_key_len = 0;
+    const char *curve_name = NULL;
     int ret = 0;
-    
     TRUSTM_PROVIDER_DBGFN(">");
-    if (!ctx || !bout || !trustm_ec_key || !trustm_ec_key->public_key || trustm_ec_key->public_key_length == 0) {
+    if (!ctx || !bout || !trustm_ec_key) {
         TRUSTM_PROVIDER_DBGFN("Error: Invalid inputs");
         goto err;
     }
@@ -666,6 +672,7 @@ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_
         TRUSTM_PROVIDER_DBGFN("Error: Invalid curve NID");
         return 0;
     }
+    curve_name = OBJ_nid2sn(curve_nid);
     switch (curve_nid) {
         case NID_X9_62_prime256v1: /* P-256 */
             private_key_len = 32;
@@ -689,61 +696,197 @@ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_
             TRUSTM_PROVIDER_DBGFN("Error: Unsupported curve");
             return 0;
     }   
-    ec_key = EC_KEY_new_by_curve_name(curve_nid); 
-    if (!ec_key) {
-        TRUSTM_PROVIDER_DBGFN("Error: Failed to create EC_KEY");
-        goto err;
+    
+    if (trustm_ec_key->point_x_buffer_length == 0 || trustm_ec_key->point_y_buffer_length == 0) {
+        if (!trustm_buffer_to_ecc_point(trustm_ec_key, trustm_ec_key->public_key, trustm_ec_key->public_key_length)) {
+            TRUSTM_PROVIDER_DBGFN("Error: Failed to convert public key to x, y coordinates");
+            goto err;
+        }
     }
-    // Set public key using x and y coordinates
+    TRUSTM_PROVIDER_DBGFN("x and y coordinates ok");
     x = BN_bin2bn(trustm_ec_key->x, trustm_ec_key->point_x_buffer_length, NULL);
     y = BN_bin2bn(trustm_ec_key->y, trustm_ec_key->point_y_buffer_length, NULL);
     if (!x || !y) {
         TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUMs for x, y coordinates");
         goto err;
     }
-    if (!EC_KEY_set_public_key_affine_coordinates(ec_key, x, y)) {
-        TRUSTM_PROVIDER_DBGFN("Error: Failed to set public key coordinates");
-        goto err;
-    }
-     privkey = OPENSSL_zalloc(private_key_len);
-     uint16_t key_id = (uint16_t)trustm_ec_key->private_key_id;
-     privkey[0] = (key_id >> 8) & 0xFF; // High byte
-     privkey[1] = key_id & 0xFF;        // Low byte
-     
+    TRUSTM_PROVIDER_DBGFN("create BIGNUMs for x, y coordinates ok");
+    privkey = OPENSSL_zalloc(private_key_len);
+    uint16_t key_id = (uint16_t)trustm_ec_key->private_key_id;
+    privkey[0] = (key_id >> 8) & 0xFF; // High byte
+    privkey[1] = key_id & 0xFF;        // Low byte
+    
     priv_bn = BN_bin2bn(privkey, private_key_len, NULL);
     if (!priv_bn) {
         TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUM for private key");
         goto err;
     }
-    if (!EC_KEY_set_private_key(ec_key, priv_bn)) {
+    TRUSTM_PROVIDER_DBGFN("create private key ok");
+    param_bld = OSSL_PARAM_BLD_new();
+    if (!param_bld) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create OSSL_PARAM_BLD");
+        goto err;
+    }
+    if (!OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY, priv_bn)) {
         TRUSTM_PROVIDER_DBGFN("Error: Failed to set private key");
         goto err;
     }
-
-    pkey = EVP_PKEY_new();
-    if (!pkey) {
-        TRUSTM_PROVIDER_DBGFN("Error: Failed to create EVP_PKEY");
+    // Set public key coordinates
+    if (!OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_EC_PUB_X, x) ||
+        !OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_EC_PUB_Y, y)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to set public key coordinates");
         goto err;
     }
-    if (!EVP_PKEY_assign_EC_KEY(pkey, ec_key)) {
-        TRUSTM_PROVIDER_DBGFN("Error: Failed to assign EC_KEY to EVP_PKEY");
-        EVP_PKEY_free(pkey);
+    // Set curve name
+    if (!OSSL_PARAM_BLD_push_utf8_string(param_bld, OSSL_PKEY_PARAM_GROUP_NAME, curve_name, 0)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to set curve name");
         goto err;
     }
-    ec_key = NULL; 
-    // Write into key.pem
+    TRUSTM_PROVIDER_DBGFN("Set curve name ok");
+    // Convert OSSL_PARAM_BLD to OSSL_PARAM
+    params = OSSL_PARAM_BLD_to_param(param_bld);
+    if (!params) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create OSSL_PARAM");
+        goto err;
+    }
+    TRUSTM_PROVIDER_DBGFN("Converted OSSL_PARAM_BLD to OSSL_PARAM ok");
+    // Create EVP_PKEY from parameters
+    pctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+    if (!pctx) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create EVP_PKEY_CTX");
+        goto err;
+    }
+    TRUSTM_PROVIDER_DBGFN("Created EVP_PKEY_CTX ok");
+    if (EVP_PKEY_fromdata_init(pctx) <= 0) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to initialize EVP_PKEY_fromdata");
+        goto err;
+    }
+    TRUSTM_PROVIDER_DBGFN("EVP_PKEY_fromdata_init ok");
+    if (EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_KEYPAIR, params) <= 0) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to create EVP_PKEY from data");
+        goto err;
+    }
+    TRUSTM_PROVIDER_DBGFN("Created EVP_PKEY ok");
+    // Write private key to PEM file
     if (!PEM_write_bio_PrivateKey(bout, pkey, NULL, NULL, 0, NULL, NULL)) {
+        TRUSTM_PROVIDER_DBGFN("Error: Failed to write private key to PEM");
         goto err;
     }
-
+    TRUSTM_PROVIDER_DBGFN("Wrote private key to PEM ok");
     ret = 1;
 
 err:
+    BN_free(x);
+    BN_free(y);
     BN_free(priv_bn);
     OPENSSL_free(privkey);
+    OSSL_PARAM_free(params);
+    OSSL_PARAM_BLD_free(param_bld);
+    EVP_PKEY_CTX_free(pctx);
     EVP_PKEY_free(pkey);
     return ret;
 }
+
+//~ static int trustm_key_write(trustm_encoder_ctx_t *ctx, BIO *bout, trustm_ec_key_t *trustm_ec_key) 
+//~ {
+    //~ int curve_nid;
+    //~ EVP_PKEY *pkey = NULL;
+    //~ EC_KEY *ec_key = NULL;
+    //~ BIGNUM *priv_bn = NULL;
+    //~ BIGNUM *x = NULL, *y = NULL;
+    //~ unsigned char *privkey = NULL;
+    //~ size_t private_key_len                  = sizeof(privkey);
+    //~ int ret = 0;
+    
+    //~ TRUSTM_PROVIDER_DBGFN(">");
+    //~ if (!ctx || !bout || !trustm_ec_key) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Invalid inputs");
+        //~ goto err;
+    //~ }
+    //~ curve_nid = trustm_ecc_curve_to_nid(trustm_ec_key->key_curve);
+    //~ if (curve_nid == NID_undef) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Invalid curve NID");
+        //~ return 0;
+    //~ }
+    //~ switch (curve_nid) {
+        //~ case NID_X9_62_prime256v1: /* P-256 */
+            //~ private_key_len = 32;
+            //~ break;            
+        //~ case NID_secp384r1: /* P-384 */
+            //~ private_key_len = 48;
+            //~ break;
+        //~ case NID_secp521r1: /* P-521 */
+            //~ private_key_len = 66;
+            //~ break;
+        //~ case NID_brainpoolP256r1: /* Brainpool 256 */
+            //~ private_key_len = 32;
+            //~ break;
+        //~ case NID_brainpoolP384r1: /* Brainpool 384 */
+            //~ private_key_len = 48;
+            //~ break;
+        //~ case NID_brainpoolP512r1: /* Brainpool 512 */
+            //~ private_key_len = 64;
+            //~ break;            
+        //~ default:
+            //~ TRUSTM_PROVIDER_DBGFN("Error: Unsupported curve");
+            //~ return 0;
+    //~ }   
+    //~ ec_key = EC_KEY_new_by_curve_name(curve_nid); 
+    //~ if (!ec_key) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to create EC_KEY");
+        //~ goto err;
+    //~ }
+    //~ // Set public key using x and y coordinates
+    //~ x = BN_bin2bn(trustm_ec_key->x, trustm_ec_key->point_x_buffer_length, NULL);
+    //~ y = BN_bin2bn(trustm_ec_key->y, trustm_ec_key->point_y_buffer_length, NULL);
+    //~ if (!x || !y) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUMs for x, y coordinates");
+        //~ goto err;
+    //~ }
+    //~ if (!EC_KEY_set_public_key_affine_coordinates(ec_key, x, y)) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to set public key coordinates");
+        //~ goto err;
+    //~ }
+     //~ privkey = OPENSSL_zalloc(private_key_len);
+     //~ uint16_t key_id = (uint16_t)trustm_ec_key->private_key_id;
+     //~ privkey[0] = (key_id >> 8) & 0xFF; // High byte
+     //~ privkey[1] = key_id & 0xFF;        // Low byte
+     
+    //~ priv_bn = BN_bin2bn(privkey, private_key_len, NULL);
+    //~ if (!priv_bn) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to create BIGNUM for private key");
+        //~ goto err;
+    //~ }
+    //~ if (!EC_KEY_set_private_key(ec_key, priv_bn)) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to set private key");
+        //~ goto err;
+    //~ }
+
+    //~ pkey = EVP_PKEY_new();
+    //~ if (!pkey) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to create EVP_PKEY");
+        //~ goto err;
+    //~ }
+    //~ if (!EVP_PKEY_assign_EC_KEY(pkey, ec_key)) {
+        //~ TRUSTM_PROVIDER_DBGFN("Error: Failed to assign EC_KEY to EVP_PKEY");
+        //~ EVP_PKEY_free(pkey);
+        //~ goto err;
+    //~ }
+    //~ ec_key = NULL; 
+    //~ // Write into key.pem
+    //~ if (!PEM_write_bio_PrivateKey(bout, pkey, NULL, NULL, 0, NULL, NULL)) {
+        //~ goto err;
+    //~ }
+
+    //~ ret = 1;
+
+//~ err:
+    //~ BN_free(priv_bn);
+    //~ OPENSSL_free(privkey);
+    //~ EVP_PKEY_free(pkey);
+    //~ return ret;
+//~ }
+
 
     
 // since we are not exporting private keys, the dummy encoders below are used
