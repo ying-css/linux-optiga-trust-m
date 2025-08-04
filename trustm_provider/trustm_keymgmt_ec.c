@@ -634,8 +634,8 @@ static int trustm_ec_keymgmt_import(void *keydata, int selection, const OSSL_PAR
     char *curve_name = NULL;
     char curve_name_buf[64] = {0};
     
-    
     TRUSTM_PROVIDER_DBGFN(">");
+    TRUSTM_PROVIDER_DBGFN("selection: %d (0x%X)", selection, selection); 
     if (trustm_ec_key == NULL)
         return 0;
 
@@ -704,6 +704,11 @@ int trustm_ec_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_
     unsigned char privkey[66]               = {0}; /*max key bits 521 */
     size_t private_key_len                  = sizeof(privkey);
     TRUSTM_PROVIDER_DBGFN(">");
+    TRUSTM_PROVIDER_DBGFN("selection: %d (0x%X)", selection, selection); 
+    if (trustm_ec_key == NULL || (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY)){
+        TRUSTM_PROVIDER_DBGFN("<");
+        return 0;
+    }
     curve_nid = trustm_ecc_curve_to_nid(trustm_ec_key->key_curve);
     if (curve_nid == NID_undef) {
         TRUSTM_PROVIDER_DBGFN("Error: Invalid curve NID");
@@ -713,7 +718,7 @@ int trustm_ec_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_
     if (pubsize == 0)
         return 0;
 
-    OSSL_PARAM params[4];
+    OSSL_PARAM params[3];
     OSSL_PARAM *p = params;
     switch (curve_nid) {
         case NID_X9_62_prime256v1: /* P-256 */
@@ -750,14 +755,14 @@ int trustm_ec_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_
     if (selection & OSSL_KEYMGMT_SELECT_PUBLIC_KEY)
         *p++ = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY, pubbuff, pubsize);
    
-    if (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) {
-            TRUSTM_PROVIDER_DBGFN("create reference key with keyID embedded:");
-            memset(privkey, 0x00, private_key_len);                     
-            privkey[private_key_len - 1] = (trustm_ec_key->private_key_id >> 8) & 0xFF; 
-            privkey[private_key_len - 2] = trustm_ec_key->private_key_id & 0xFF; 
+    //~ if (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) {
+            //~ TRUSTM_PROVIDER_DBGFN("create reference key with keyID embedded:");
+            //~ memset(privkey, 0x00, private_key_len);                     
+            //~ privkey[private_key_len - 1] = (trustm_ec_key->private_key_id >> 8) & 0xFF; 
+            //~ privkey[private_key_len - 2] = trustm_ec_key->private_key_id & 0xFF; 
 
-            *p++  = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_PRIV_KEY, privkey, private_key_len);
-    }  
+            //~ *p++  = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_PRIV_KEY, privkey, private_key_len);
+    //~ }  
 
     *p = OSSL_PARAM_construct_end();
 
