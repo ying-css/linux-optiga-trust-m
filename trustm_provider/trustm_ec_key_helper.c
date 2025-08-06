@@ -262,13 +262,6 @@ int trustm_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
         }
     }
 
-    const unsigned char *xbuf = trustm_ec_key->x;
-    size_t xlen = trustm_ec_key->point_x_buffer_length;
-    const unsigned char *ybuf = trustm_ec_key->y;
-    size_t ylen = trustm_ec_key->point_y_buffer_length;
-
-    if (!xbuf || !ybuf || xlen == 0 || ylen == 0) return 0;
-
     // constructing dummy private key with key_id values
     privkey = OPENSSL_zalloc(private_key_len);
     if (!privkey){
@@ -281,15 +274,9 @@ int trustm_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
     TRUSTM_PROVIDER_DBGFN("dummy private key set successfully");
 
     // building public key from x and y coordinates
-    size_t publen = 1 + xlen + ylen;
-    unsigned char *pub = OPENSSL_malloc(publen);
-    if (!pub){
-	   TRUSTM_PROVIDER_DBGFN("unable to alloc memory for pub key");
-	    goto err;
-    }
-    pub[0] = 0x04;
-    memcpy(pub + 1, xbuf, xlen);
-    memcpy(pub + 1 + xlen, ybuf, ylen);
+    size_t publen = 1 + trustm_ec_key->point_x_buffer_length + trustm_ec_key->point_y_buffer_length;
+    void* pub = NULL;
+    trustm_ec_point_to_uncompressed_buffer(trustm_ec_key,&pub);
     TRUSTM_PROVIDER_DBGFN("pub key constructed successfully from x/y coordinates");
 
     // construct asn1 object based on curve type
