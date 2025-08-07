@@ -180,7 +180,7 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
         return 0;
         }
         else {
-        TRUSTM_PROVIDER_ERRFN("EC Key OID %.4X\n", trustm_ec_gen_ctx->private_key_id);
+        TRUSTM_PROVIDER_DBG("EC Key OID %.4X\n", trustm_ec_gen_ctx->private_key_id);
         return 1;
         }
     }

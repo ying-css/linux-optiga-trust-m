@@ -520,10 +520,8 @@ static int trustm_ec_encoder_encode_SubjectPublicKeyInfo_pem(void *ctx, OSSL_COR
 static OSSL_FUNC_encoder_does_selection_fn trustm_ec_encoder_SubjectPublicKeyInfo_pem_does_selection;
 static int trustm_ec_encoder_SubjectPublicKeyInfo_pem_does_selection(void *ctx, int selection)
 {
-    TRUSTM_PROVIDER_DBGFN(">");
     if ((selection & OSSL_KEYMGMT_SELECT_PUBLIC_KEY) || (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY))
         return 1;
-    TRUSTM_PROVIDER_DBGFN("<");
     return 0;
 }
 
@@ -586,10 +584,8 @@ static int trustm_ec_encoder_encode_SubjectPublicKeyInfo_der(void *ctx, OSSL_COR
 static OSSL_FUNC_encoder_does_selection_fn trustm_ec_encoder_SubjectPublicKeyInfo_der_does_selection;
 static int trustm_ec_encoder_SubjectPublicKeyInfo_der_does_selection(void *ctx, int selection)
 {
-    TRUSTM_PROVIDER_DBGFN(">");
     if ((selection & OSSL_KEYMGMT_SELECT_PUBLIC_KEY) || (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY))
         return 1;
-    TRUSTM_PROVIDER_DBGFN("<");
     return 0;
 }
 
@@ -641,6 +637,7 @@ static int trustm_ec_encoder_encode_text(void *ctx, OSSL_CORE_BIO *cout, const v
     OPENSSL_free(buffer);
     OPENSSL_free(pubkey_buffer);
     BIO_free(bout);
+    TRUSTM_PROVIDER_DBGFN("<");
     return 1;
 }
 
@@ -679,11 +676,9 @@ static int trustm_encode_PrivateKeyInfo_pem(void *ctx, OSSL_CORE_BIO *cout, cons
 static OSSL_FUNC_encoder_does_selection_fn trustm_encoder_PrivateKeyInfo_pem_does_selection;
 static int trustm_encoder_PrivateKeyInfo_pem_does_selection(void *ctx, int selection)
 {
-    TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_DBGFN("selection: %d (0x%X)", selection, selection); 
     if (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY)
         return 1;
-    TRUSTM_PROVIDER_DBGFN("<");
     return 0;
 }
 
