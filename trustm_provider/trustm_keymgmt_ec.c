@@ -108,6 +108,7 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
     char *grp_name_tmp  = grp_name;
     char *keyId_str     = NULL;
     char *keyUsage_str  = NULL;
+
     if (params == NULL)
         return 1;
     const OSSL_PARAM *param_dbg = params;
@@ -202,13 +203,6 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
         }
         sscanf(hex_start, "%x", &key_usage);
         trustm_ec_gen_ctx->key_usage = key_usage;
-        //~ if ((trustm_ec_gen_ctx->private_key_id < 0xE0F0) || (trustm_ec_gen_ctx->private_key_id > 0xE0F3)){
-            //~ TRUSTM_PROVIDER_ERRFN("Invalid EC Key OID: %.4X\n", trustm_ec_gen_ctx->private_key_id);
-            //~ return 0;
-        //~ } else {
-            //~ TRUSTM_PROVIDER_DBG("EC Key OID %.4X\n", trustm_ec_gen_ctx->private_key_id);
-            //~ return 1;
-        //~ }
         TRUSTM_PROVIDER_DBG("EC Key Usage %.2X\n", trustm_ec_gen_ctx->key_usage);
 
     }
@@ -294,7 +288,6 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
     trustm_ec_key->private_key_id = trustm_ec_gen_ctx->private_key_id;
     trustm_ec_key->key_curve = trustm_ec_gen_ctx->key_curve;
     trustm_ec_key->key_usage = trustm_ec_gen_ctx->key_usage;
- //   trustm_ec_key->key_usage = 0x13;
     trustm_ec_key->public_key_length = sizeof(trustm_ec_key->public_key);
 
     TRUSTM_PROVIDER_DBG("Key OID : 0x%.4X\nKey curve 0x%.2X\nKey usage 0x%.2X\n", trustm_ec_key->private_key_id, trustm_ec_key->key_curve, trustm_ec_key->key_usage);
