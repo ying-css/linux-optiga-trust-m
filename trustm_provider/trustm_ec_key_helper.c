@@ -215,7 +215,7 @@ static unsigned char *der_append_tlv(unsigned char *p, unsigned char tag,
     return p + vlen;
 }
 
-int trustm_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
+int trustm_ec_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
 {
     int curve_nid;
     EVP_PKEY *pkey = NULL;
@@ -342,5 +342,15 @@ err:
     OPENSSL_free(privkey);
     OPENSSL_free(oid_tlv);
     return ret;
+}
+
+int trustm_rsa_key_write(BIO *bout, trustm_rsa_key_t *trustm_rsa_key)
+{
+    int ret = 0;
+    TRUSTM_PROVIDER_DBGFN(">");
+    //implement rsa key writing here 
+    TRUSTM_PROVIDER_DBGFN("<");
+    return ret;
+
 }
 
