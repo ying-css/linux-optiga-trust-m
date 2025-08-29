@@ -344,3 +344,13 @@ err:
     return ret;
 }
 
+int trustm_rsa_key_write(BIO *bout, trustm_rsa_key_t *trustm_rsa_key)
+{
+    int ret = 0;
+    TRUSTM_PROVIDER_DBGFN(">");
+    //implement rsa key writing here 
+    TRUSTM_PROVIDER_DBGFN("<");
+    return ret;
+
+}
+

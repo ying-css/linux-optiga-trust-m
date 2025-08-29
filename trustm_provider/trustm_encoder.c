@@ -719,7 +719,7 @@ const OSSL_DISPATCH trustm_rsa_encoder_PrivateKeyInfo_pem_functions[] = {
     { 0, NULL }
 };
 
-static OSSL_FUNC_encoder_encode_fn trustm_encode_PrivateKeyInfo_der;
+static OSSL_FUNC_encoder_encode_fn trustm_ec_encode_PrivateKeyInfo_der;
 static int trustm_ec_encode_PrivateKeyInfo_der(void *ctx, OSSL_CORE_BIO *cout, const void *key, 
                                             const OSSL_PARAM key_abstract[], int selection, 
                                             OSSL_PASSPHRASE_CALLBACK *cb, void *cbarg)

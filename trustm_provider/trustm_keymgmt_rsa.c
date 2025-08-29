@@ -487,12 +487,7 @@ static int trustm_rsa_keymgmt_match(const void *keydata1, const void *keydata2, 
     TRUSTM_PROVIDER_DBGFN("<");
     return 1;
 }
-int trustm_rsa_key_write(BIO *bout, trustm_rsa_key_t *trustm_rsa_key)
-{
-    TRUSTM_PROVIDER_DBGFN(">");
-    TRUSTM_PROVIDER_DBGFN("<");
 
-}
 int trustm_rsa_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_cb, void *cbarg)
 {
     trustm_rsa_key_t *trustm_rsa_key = keydata;
