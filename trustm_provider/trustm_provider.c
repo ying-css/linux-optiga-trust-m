@@ -382,6 +382,7 @@ extern const OSSL_DISPATCH trustm_ec_encoder_PrivateKeyInfo_der_functions[];
 extern const OSSL_DISPATCH trustm_rsa_encoder_PrivateKeyInfo_pem_functions[];
 extern const OSSL_DISPATCH trustm_rsa_encoder_PrivateKeyInfo_der_functions[];
 
+
 // todo: add pem and der encoding format here too
 static const OSSL_ALGORITHM trustm_encoders[] = {
     { "RSA", "provider=trustm,output=der,structure=pkcs1", trustm_rsa_encoder_pkcs1_der_functions },

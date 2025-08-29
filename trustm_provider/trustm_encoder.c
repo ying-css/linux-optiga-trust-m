@@ -648,7 +648,6 @@ const OSSL_DISPATCH trustm_ec_encoder_text_functions[] = {
 };
 
 // exporting private key ID into key.pem
-//////////////////////////////////////////////////////////////////////////////////
 static OSSL_FUNC_encoder_encode_fn trustm_ec_encode_PrivateKeyInfo_pem;
 static int trustm_ec_encode_PrivateKeyInfo_pem(void *ctx, OSSL_CORE_BIO *cout, const void *key, 
                                             const OSSL_PARAM key_abstract[], int selection, 
