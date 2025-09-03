@@ -367,8 +367,11 @@ int trustm_rsa_key_write(BIO *bout, trustm_rsa_key_t *trustm_rsa_key)
 
     unsigned char priv_exponent[1] = {0x00};
     unsigned char prime1[1] = {0x01};
-    unsigned char prime2[4] = {0};
-    memcpy(prime2, &trustm_rsa_key->private_key_id, sizeof(trustm_rsa_key->private_key_id));
+    
+    uint8_t prime2[2];
+    prime2[0] = (trustm_rsa_key->private_key_id >> 8) & 0xFF; // high byte
+    prime2[1] = trustm_rsa_key->private_key_id & 0xFF;        // low byte
+    
     unsigned char exponent1[1] = {0x00};
     unsigned char exponent2[1] = {0x00};
     unsigned char coefficient[4] = {0};
