@@ -650,7 +650,10 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
     TRUSTM_PROVIDER_DBGFN("<");
     return 1;
 }
+static int trustm_object_loadkey_e0e0(trustm_object_ctx, object_cb, object_cbarg){
 
+    //To be implemented for e0e0 slot
+}
 static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void *object_cbarg)
 {
     optiga_lib_status_t return_status;
@@ -881,7 +884,10 @@ static int trustm_object_load(void *ctx, OSSL_CALLBACK *object_cb, void *object_
                     return 0;
             ret = trustm_object_load_pkey_rsa(trustm_object_ctx, object_cb, object_cbarg);
         }
-        if ((trustm_object_ctx->key_id >= 0xE0F0) && (trustm_object_ctx->key_id <= 0xE0F3))
+        if ((trustm_object_ctx->key_id = 0xE0F0)) {
+            ret = trustm_object_loadkey_e0e0(trustm_object_ctx, object_cb, object_cbarg);
+        }
+        if ((trustm_object_ctx->key_id >= 0xE0F1) && (trustm_object_ctx->key_id <= 0xE0F3))
         {
             if (trustm_object_ctx->new_key)
                 if (trustm_genpkey_ec(trustm_object_ctx) == 0)
