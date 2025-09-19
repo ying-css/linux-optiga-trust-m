@@ -653,6 +653,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
 static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void * object_cbarg){
     TRUSTM_PROVIDER_DBGFN(">");
    
+    int ret = 0;
     uint8_t read_data_buffer[1024];
     uint16_t bytes_to_read = sizeof(read_data_buffer);
     optiga_lib_status_t return_status;
@@ -681,16 +682,17 @@ static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OS
     const unsigned char *p = read_data_buffer;
     X509 *cert = d2i_X509(NULL, &p, bytes_to_read);
     if (!cert) {
-        fprintf(stderr, "Failed to parse DER certificate\n");
-        return -1;
+        TRUSTM_PROVIDER_ERRFN("Failed to parse DER certificate\n");
+        ret = -1;
+	goto cleanup;
     }
 
     // Extract public key (generic EVP_PKEY wrapper)
     EVP_PKEY *pkey = X509_get_pubkey(cert);
     if (!pkey) {
-        fprintf(stderr, "Failed to extract public key\n");
-        X509_free(cert);
-        return -1;
+        TRUSTM_PROVIDER_ERRFN("Failed to extract public key\n");
+        ret = -1;
+	goto cleanup;
     }
 
     trustm_ec_key_t *trustm_ec_key = NULL;
@@ -704,9 +706,9 @@ static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OS
     unsigned char *der_buf = trustm_ec_key->public_key;
     int der_len = i2d_PUBKEY(pkey, &der_buf); 
     if (der_len <= 0) {
-        EVP_PKEY_free(pkey);
-        X509_free(cert);
-        return -1;
+	TRUSTM_PROVIDER_ERRFN("Failed to convert public key into der buffer");
+	ret = -1;
+        goto cleanup;
     }
     trustm_ec_key->public_key_length = (size_t)der_len;
     trustm_ec_key->key_curve = OPTIGA_ECC_CURVE_NIST_P_256;
@@ -714,20 +716,11 @@ static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OS
     trustm_ec_key->public_key_header_length = 23; //size of prime256v1 header
     trustm_ec_key->key_usage = (OPTIGA_KEY_USAGE_AUTHENTICATION | OPTIGA_KEY_USAGE_SIGN);
 
-    TRUSTM_PROVIDER_DBGFN("curve = %02X", trustm_ec_key->key_curve);
-    TRUSTM_PROVIDER_DBGFN("key usage = %d", trustm_ec_key->key_usage);
-    TRUSTM_PROVIDER_DBGFN("priv id = %04X", trustm_ec_key->private_key_id);
-
-    TRUSTM_PROVIDER_DBGFN("publen = %d", trustm_ec_key->public_key_length);
-
     if (trustm_ecc_public_key_to_point(trustm_ec_key) == 0){
-	    TRUSTM_PROVIDER_ERRFN("Error converting EC public key to points\n");
+	TRUSTM_PROVIDER_ERRFN("Error converting EC public key to points\n");
+	ret = -1;
+	goto cleanup;
     }
-    TRUSTM_PROVIDER_DBGFN("x = %02X", trustm_ec_key->x[1]);
-    TRUSTM_PROVIDER_DBGFN("y = %02X", trustm_ec_key->y[1]);
-
-    TRUSTM_PROVIDER_DBGFN("x len = %d", trustm_ec_key->point_x_buffer_length);
-    TRUSTM_PROVIDER_DBGFN("y len = %d", trustm_ec_key->point_y_buffer_length);
    
     int object_type = OSSL_OBJECT_PKEY;
     OSSL_PARAM params[4];
@@ -737,18 +730,23 @@ static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OS
     params[1] = OSSL_PARAM_construct_utf8_string(OSSL_OBJECT_PARAM_DATA_TYPE,
                                                  (char *)keytype, sizeof(keytype));
     params[2] = OSSL_PARAM_construct_octet_string(OSSL_OBJECT_PARAM_REFERENCE,
-                                                  trustm_ec_key, sizeof(*trustm_ec_key));
+                                                  &trustm_ec_key, sizeof(trustm_ec_key));
     params[3] = OSSL_PARAM_construct_end();
 
-    object_cb(params, object_cbarg);
-  
+    ret = object_cb(params, object_cbarg);
+    if (!ret){
+	TRUSTM_PROVIDER_ERRFN("Failed to pass params");
+	goto cleanup;
+    }
+
+    ret = 1;
+
 cleanup:
-    EVP_PKEY_free(pkey);
-    X509_free(cert);
+    if (pkey) EVP_PKEY_free(pkey);
+    if (cert) X509_free(cert);
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
-    //To be implemented for e0e0 slot
-    return 1;
+    return ret;
 }
 
 static int trustm_object_load_pkey_ec(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void *object_cbarg)
