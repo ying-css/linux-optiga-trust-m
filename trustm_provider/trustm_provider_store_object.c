@@ -235,7 +235,7 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
     uint8_t public_key[1024];
     uint16_t public_key_length = sizeof(public_key);
     uint16_t public_key_header_length;
-
+    int ret = 0;
     int i;
     optiga_lib_status_t return_status;
 
@@ -284,7 +284,7 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
         TRUSTM_PROVIDER_ERRFN("Error in optiga_crypt_rsa_generate_keypair\nError code : 0x%.4X\n", return_status);
-        return 0;
+        goto error;
     }
 
     // wait until the optiga_crypt_rsa_generate_keypair operation is completed
@@ -295,7 +295,7 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
         TRUSTM_PROVIDER_ERRFN("Error generating RSA key pair. Return status: %d\n", return_status);
-        return 0;
+        goto error;
     }
 
     // saving public key to private_key_id+0x10E4
@@ -311,7 +311,7 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
 
     if (OPTIGA_LIB_SUCCESS != return_status) 
     {
-        return 0;
+        goto error;
     }
 
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT); 
@@ -319,12 +319,14 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
 
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
-        return 0;
+        goto error;
     }
-    
+
+    ret = 1;
+error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
-    return 1;
+    return ret;
 }
 
 static int trustm_object_load_pkey_rsa(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void *object_cbarg)
@@ -497,7 +499,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
 {
     optiga_lib_status_t return_status;
     int i = 0;
-
+    int ret = 0;
     uint8_t public_key[500];
     uint16_t public_key_length = sizeof(public_key);
     uint16_t public_key_header_length;
@@ -615,7 +617,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
         TRUSTM_PROVIDER_ERRFN("Error in optiga_crypt_ecc_generate_keypair\nError code : 0x%.4X\n", return_status);      
-        return 0;
+        goto error;
     }
     
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT);
@@ -624,7 +626,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
         TRUSTM_PROVIDER_ERRFN("Error in EC key generation\nError code : 0x%.4X\n", return_status);      
-        return 0;
+        goto error;
     } 
 
     uint16_t public_id = ((trustm_object_ctx->key_curve == OPTIGA_ECC_CURVE_NIST_P_521) || (trustm_object_ctx->key_curve == OPTIGA_ECC_CURVE_BRAIN_POOL_P_512R1)) ?
@@ -643,7 +645,8 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
 
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
-        return 0;
+        TRUSTM_PROVIDER_ERRFN("Error in writing data\nError code : 0x%.4X\n", return_status);    
+        goto error;
     }
     
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT);
@@ -652,8 +655,11 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
         TRUSTM_PROVIDER_ERRFN("Error in EC public key saving\nError code : 0x%.4X\n", return_status);
-        return 0;
+        goto error;
     }   
+
+    ret = 1;
+error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
     return 1;
@@ -684,6 +690,7 @@ static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OS
             &bytes_to_read
     );
     if(OPTIGA_LIB_SUCCESS != return_status){
+        TRUSTM_PROVIDER_ERRFN("Error in reading data from 0xE0E0\nError code : 0x%.4X\n", return_status);    
         goto error;
     }
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT);
