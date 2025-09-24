@@ -166,7 +166,6 @@ static int trustm_rsa_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[
     ret = 1;
 
 error:
-// if (p) free(p);
     TRUSTM_PROVIDER_DBGFN("<");
     return ret;
 }
@@ -258,7 +257,9 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
         TRUSTM_PROVIDER_ERRFN("Error in optiga_crypt_rsa_generate_keypair\nError code : 0x%.4X\n", return_status);
-        goto error;
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
+        return NULL;
     }
 
     // wait until the optiga_crypt_rsa_generate_keypair operation is completed
@@ -269,7 +270,9 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
         TRUSTM_PROVIDER_ERRFN("Error generating RSA key pair. Return status: %d\n", return_status);
-        goto error;
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
+        return NULL;
     }
 
     // saving public key to private_key_id+0x10E4
@@ -285,7 +288,9 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
 
     if (OPTIGA_LIB_SUCCESS != return_status) 
     {
-        goto error;
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
+        return NULL;
     }
 
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT); 
@@ -293,7 +298,10 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
 
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
-        goto error;
+        TRUSTM_PROVIDER_ERRFN("Error writing public key to OID 0x%.4X\n", (trustm_rsa_key->private_key_id)+0x10E4);
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
+        return NULL;
     }
 
     trustm_rsa_key->public_key_length += i;
@@ -325,15 +333,16 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
 
     if (tolen < 0)
     {
-        goto error;
+        TRUSTM_PROVIDER_ERRFN("Error extracting RSA modulus\n");
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
+        return NULL;
     }
 
     trustm_rsa_key->modulus_length = tolen;
     BN_free(nbig);
 
-error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    if (trustm_rsa_key) OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
     TRUSTM_PROVIDER_DBGFN("<");
     return trustm_rsa_key;
 }
@@ -417,7 +426,7 @@ static int trustm_rsa_keymgmt_get_params(void *keydata, OSSL_PARAM params[])
     ret = 1;
 error:
     TRUSTM_PROVIDER_DBGFN("<");
-    return ret;
+    return 1;
 }
 
 static const OSSL_PARAM * trustm_rsa_keymgmt_gettable_params(void *provctx)

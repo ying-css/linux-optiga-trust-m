@@ -152,26 +152,23 @@ static int trustm_ec_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[]
     if (keyId_str == NULL) {
         TRUSTM_PROVIDER_MSGFN( "No key id found. Default id will be used \n");
         trustm_ec_gen_ctx->private_key_id = DEFAULT_EC_KEY_ID;
-    }
-    else {
+    } else {
         char *hex_start = keyId_str;
         errno = 0;
         uint32_t key_id;
         const char needle[3] = "0x";
-        if (strncmp(keyId_str, needle, 2) == 0) {
+    if (strncmp(keyId_str, needle, 2) == 0) {
         hex_start += 2; // Skip "0x"
-        } else {
+    } else {
         TRUSTM_PROVIDER_ERRFN("Key ID does not start with '0x': %s\n", keyId_str);
         return 0; 
-        }
+    }
         sscanf(hex_start, "%x", &key_id);
         trustm_ec_gen_ctx->private_key_id = key_id;
-        if ((trustm_ec_gen_ctx->private_key_id < 0xE0F0) || (trustm_ec_gen_ctx->private_key_id > 0xE0F3))
-        {
+    if ((trustm_ec_gen_ctx->private_key_id < 0xE0F0) || (trustm_ec_gen_ctx->private_key_id > 0xE0F3)) {
         TRUSTM_PROVIDER_ERRFN("Invalid EC Key OID: %.4X\n", trustm_ec_gen_ctx->private_key_id);
         return 0;
-        }
-        else {
+    } else {
         TRUSTM_PROVIDER_DBG("EC Key OID %.4X\n", trustm_ec_gen_ctx->private_key_id);
         return 1;
         }
@@ -362,7 +359,9 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
         TRUSTM_PROVIDER_ERRFN("Error in optiga_util_write_data\nError code : 0x%.4X\n", return_status);
-        return 0;
+        OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        return NULL;
     }
     
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT);
@@ -371,7 +370,9 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
     if (return_status != OPTIGA_LIB_SUCCESS)
     {
         TRUSTM_PROVIDER_ERRFN("Error in EC public key saving\nError code : 0x%.4X\n", return_status);
-        return 0;
+        OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
+        TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
+        return NULL;
     }                    
 
     // update public key length and public key header length
@@ -624,7 +625,7 @@ static int trustm_ec_keymgmt_import(void *keydata, int selection, const OSSL_PAR
     BIGNUM *bn_private_key = NULL;
     char *curve_name = NULL;
     char curve_name_buf[64] = {0};
-    
+    int ret = 0;
     TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_DBGFN("selection: %d (0x%X)", selection, selection); 
     if (trustm_ec_key == NULL)
@@ -673,15 +674,15 @@ static int trustm_ec_keymgmt_import(void *keydata, int selection, const OSSL_PAR
         if (p != NULL)
         {
             if (trustm_buffer_to_ecc_point(trustm_ec_key, p->data, p->data_size) == 0)
-             return 0;
+                goto error;
         }
     }
-    
+    TRUSTM_PROVIDER_DBGFN("<");
+    ret = 1;
+error:
     OPENSSL_free(private_key_data);
     BN_free(bn_private_key);
-
-    TRUSTM_PROVIDER_DBGFN("<");
-    return 1;
+    return ret;
 }
 
 int trustm_ec_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_cb, void *cbarg)
