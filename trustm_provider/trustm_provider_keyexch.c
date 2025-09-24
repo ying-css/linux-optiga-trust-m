@@ -229,7 +229,6 @@ static int trustm_keyexch_derive_kdf(trustm_keyexch_ctx_t *trustm_keyexch_ctx, u
 
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
 
-
     EVP_KDF_CTX_free(kctx);
     EVP_KDF_free(kdf);
     TRUSTM_PROVIDER_DBGFN("<");
