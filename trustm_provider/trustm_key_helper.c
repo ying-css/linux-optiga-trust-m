@@ -344,9 +344,9 @@ int trustm_ec_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
     }
 
     ret = 1;
+    TRUSTM_PROVIDER_DBGFN("<");
 
 err:
-    TRUSTM_PROVIDER_DBGFN("<");
     if (pkey) EVP_PKEY_free(pkey);
     if (bit_inner) OPENSSL_free(bit_inner);
     if (pub) OPENSSL_free(pub);
