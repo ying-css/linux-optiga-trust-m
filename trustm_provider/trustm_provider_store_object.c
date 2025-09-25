@@ -662,7 +662,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
     TRUSTM_PROVIDER_DBGFN("<");
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return 1;
+    return ret;
 }
 static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void * object_cbarg)
 {
