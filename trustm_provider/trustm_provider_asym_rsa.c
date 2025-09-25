@@ -129,9 +129,9 @@ static int rsa_asymcipher_encrypt(void *ctx, unsigned char *out, size_t *outlen,
     }
 
     ret = 1;
+    TRUSTM_PROVIDER_DBGFN("<");
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    TRUSTM_PROVIDER_DBGFN("<");
     return ret;
 }
 
@@ -185,10 +185,9 @@ static int rsa_asymcipher_decrypt(void *ctx, unsigned char *out, size_t *outlen,
     }
 
     ret = 1;
-
+    TRUSTM_PROVIDER_DBGFN("<");
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    TRUSTM_PROVIDER_DBGFN("<");
     return ret;
 }
 

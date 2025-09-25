@@ -426,7 +426,7 @@ static int trustm_rsa_keymgmt_get_params(void *keydata, OSSL_PARAM params[])
     ret = 1;
 error:
     TRUSTM_PROVIDER_DBGFN("<");
-    return 1;
+    return ret;
 }
 
 static const OSSL_PARAM * trustm_rsa_keymgmt_gettable_params(void *provctx)
