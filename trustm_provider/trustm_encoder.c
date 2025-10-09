@@ -473,6 +473,7 @@ static X509_PUBKEY *trustm_get_x509_ec_pubkey(trustm_ec_key_t *pkey)
                         penc, penclen))
     {
         OPENSSL_free(penc);
+        X509_PUBKEY_free(pubkey);
         return NULL;
     }
     TRUSTM_PROVIDER_DBGFN("<");
@@ -517,7 +518,7 @@ static int trustm_ec_encoder_encode_SubjectPublicKeyInfo_pem(void *ctx, OSSL_COR
     BIO_free(bout);
     TRUSTM_PROVIDER_DBGFN("<");
     return ret;
-}
+} 
 
 
 static OSSL_FUNC_encoder_does_selection_fn trustm_ec_encoder_SubjectPublicKeyInfo_pem_does_selection;
