@@ -167,7 +167,7 @@ static int trustm_rsa_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[
     TRUSTM_PROVIDER_DBGFN("<");
 
 error:
-    if (e )BN_free(e);
+    if (e)BN_free(e);
     return ret;
 }
 
@@ -340,7 +340,6 @@ static void *trustm_rsa_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     if (trustm_rsa_key) OPENSSL_clear_free(trustm_rsa_key, sizeof(trustm_rsa_key_t));
-    if (e) BN_free(e);
     return NULL;
 }
 

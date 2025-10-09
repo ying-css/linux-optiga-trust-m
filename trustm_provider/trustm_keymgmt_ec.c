@@ -691,7 +691,6 @@ int trustm_ec_keymgmt_export(void *keydata, int selection, OSSL_CALLBACK *param_
     TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_DBGFN("selection: %d (0x%X)", selection, selection); 
     if (trustm_ec_key == NULL || (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY)){
-        TRUSTM_PROVIDER_DBGFN("<");
         return 0;
     }
     curve_nid = trustm_ecc_curve_to_nid(trustm_ec_key->key_curve);

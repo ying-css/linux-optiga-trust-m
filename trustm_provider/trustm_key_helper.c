@@ -289,26 +289,17 @@ int trustm_ec_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
     ASN1_OBJECT *ao = OBJ_nid2obj(curve_nid);
     if (!ao) {
 	    TRUSTM_PROVIDER_DBGFN("unable to build asn1 object");
- 	    goto err;
-    }
-/*  according to rfc5915, ec pkey should follow this format
-
-    ECPrivateKey ::= SEQUENCE {
-       version        INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
-       privateKey     OCTET STRING,
-       parameters [0] EXPLICIT ECParameters OPTIONAL,
-       publicKey  [1] EXPLICIT BIT STRING OPTIONAL
+ 	    goto error;
     }
 
-*/
     int oid_tlv_len = i2d_ASN1_OBJECT(ao, &oid_tlv); 
     if (oid_tlv_len <= 0 || !oid_tlv) {
 	    TRUSTM_PROVIDER_DBGFN("failed to encode");
-	    goto err;
+	    goto error;
     }
     size_t bit_inner_len = 1 + publen;
     bit_inner = OPENSSL_malloc(bit_inner_len);
-    if (!bit_inner) goto err;
+    if (!bit_inner) goto error;
     bit_inner[0] = 0x00;
     memcpy(bit_inner + 1, pub, publen);
 
@@ -336,17 +327,17 @@ int trustm_ec_key_write(BIO *bout, trustm_ec_key_t *trustm_ec_key)
     const unsigned char *pp = der;
     pkey = d2i_AutoPrivateKey(NULL, &pp, (long)derlen);
     if (!pkey) {
-        goto err;
+        goto error;
     }
 
     if (!PEM_write_bio_PrivateKey(bout, pkey, NULL, NULL, 0, NULL, NULL)) {
-        goto err;
+        goto error;
     }
 
     ret = 1;
     TRUSTM_PROVIDER_DBGFN("<");
 
-err:
+error:
     if (pkey) EVP_PKEY_free(pkey);
     if (bit_inner) OPENSSL_free(bit_inner);
     if (pub) OPENSSL_free(pub);
@@ -403,10 +394,9 @@ int trustm_rsa_key_write(BIO *bout, trustm_rsa_key_t *trustm_rsa_key)
     if (pkey && PEM_write_bio_PrivateKey(bout, pkey, NULL, NULL, 0, NULL, NULL)){
         ret = 1;
     }
-
+	TRUSTM_PROVIDER_DBGFN("<");
 error:
     if (pkey) EVP_PKEY_free(pkey);
     if (der) free(der);
-    TRUSTM_PROVIDER_DBGFN("<");
     return ret;
 }
