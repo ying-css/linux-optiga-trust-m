@@ -218,7 +218,6 @@ static int trustm_rsa_signature_sign(void *ctx, unsigned char *sig, size_t *sigl
 {
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
-    int ret = 0;
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
 
@@ -238,7 +237,6 @@ static int trustm_rsa_signature_sign(void *ctx, unsigned char *sig, size_t *sigl
                                         0x0000);
     if (OPTIGA_LIB_SUCCESS != return_status)
     {
-        TRUSTM_PROVIDER_ERRFN("Error signing rsa\nError code : 0x%.4X\n", return_status);
         goto error;
     }
     // Wait until the optiga_crypt_rsa_sign operation is completed
@@ -263,12 +261,12 @@ static int trustm_rsa_signature_sign(void *ctx, unsigned char *sig, size_t *sigl
 
         memcpy(sig, temp_sig, *siglen);
     }
-
-    ret = 1;
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_ecdsa_signature_sign(void *ctx, unsigned char *sig, size_t *siglen, size_t sigsize,
@@ -276,7 +274,6 @@ static int trustm_ecdsa_signature_sign(void *ctx, unsigned char *sig, size_t *si
 {
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
-    int ret = 0;
 
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
@@ -339,12 +336,13 @@ static int trustm_ecdsa_signature_sign(void *ctx, unsigned char *sig, size_t *si
 
         memcpy(sig, temp_sig, *siglen);
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 // basically digest sign, can be used for both sign and verify operations
@@ -353,8 +351,6 @@ static int trustm_rsa_signature_digest_init(void *ctx, const char *mdname, void 
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     trustm_signature_ctx->trustm_rsa_key = provkey;
     optiga_lib_status_t return_status;
-
-    int ret = 0;
 
     TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
@@ -379,14 +375,14 @@ static int trustm_rsa_signature_digest_init(void *ctx, const char *mdname, void 
         TRUSTM_PROVIDER_ERRFN("Error in trustm_rsa_signature_digest_init\n");
         goto error; 
     }
-
-    ret =  (trustm_rsa_signature_set_ctx_params(trustm_signature_ctx, params)
-            && rsa_signature_scheme_init(trustm_signature_ctx, mdname));
-            
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return  (trustm_rsa_signature_set_ctx_params(trustm_signature_ctx, params)
+            && rsa_signature_scheme_init(trustm_signature_ctx, mdname));
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 // basically digest sign, can be used for both sign and verify operations
@@ -395,8 +391,6 @@ static int trustm_ecdsa_signature_digest_init(void *ctx, const char *mdname, voi
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     trustm_signature_ctx->trustm_ec_key = provkey;
     optiga_lib_status_t return_status;
-
-    int ret = 0;
 
     TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
@@ -421,14 +415,15 @@ static int trustm_ecdsa_signature_digest_init(void *ctx, const char *mdname, voi
         TRUSTM_PROVIDER_ERRFN("Error in trustm_ecdsa_signature_digest_init\n");
         goto error;
     }
-
-    ret = (trustm_ecdsa_signature_set_ctx_params(trustm_signature_ctx, params)
-            && ecdsa_signature_scheme_init(trustm_signature_ctx, mdname));
-            
+    
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE        
     TRUSTM_PROVIDER_DBGFN("<");
+    return (trustm_ecdsa_signature_set_ctx_params(trustm_signature_ctx, params)
+            && ecdsa_signature_scheme_init(trustm_signature_ctx, mdname));
+
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 // basically digest update, can be used for both sign and verify operations
@@ -436,8 +431,6 @@ static int trustm_rsa_signature_digest_update(void *ctx, const unsigned char *da
 {
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
-
-    int ret = 0;
 
     trustm_signature_ctx->digest_data->hash_data_host.buffer = data;
     trustm_signature_ctx->digest_data->hash_data_host.length = datalen;
@@ -488,11 +481,12 @@ static int trustm_rsa_signature_digest_update(void *ctx, const unsigned char *da
         goto error;
     }
     
-    ret = 1;
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 // basically digest update, can be used for both sign and verify operations
@@ -500,8 +494,6 @@ static int trustm_ecdsa_signature_digest_update(void *ctx, const unsigned char *
 {
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
-
-    int ret = 0;
 
     trustm_signature_ctx->digest_data->hash_data_host.buffer = data;
     trustm_signature_ctx->digest_data->hash_data_host.length = datalen;
@@ -554,11 +546,12 @@ static int trustm_ecdsa_signature_digest_update(void *ctx, const unsigned char *
         goto error;
     } 
     
-    ret = 1;
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_rsa_signature_digest_sign_final(void *ctx, unsigned char *sig, size_t *siglen, size_t sigsize)
@@ -566,8 +559,6 @@ static int trustm_rsa_signature_digest_sign_final(void *ctx, unsigned char *sig,
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
     uint8_t digest_size;
-
-    int ret = 0;
 
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
@@ -609,12 +600,13 @@ static int trustm_rsa_signature_digest_sign_final(void *ctx, unsigned char *sig,
     {
         memcpy(sig, temp_sig, *siglen);
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_ecdsa_signature_digest_sign_final(void *ctx, unsigned char *sig, size_t *siglen, size_t sigsize)
@@ -622,8 +614,6 @@ static int trustm_ecdsa_signature_digest_sign_final(void *ctx, unsigned char *si
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
     uint8_t digest_size;
-
-    int ret = 0;
 
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
@@ -679,12 +669,13 @@ static int trustm_ecdsa_signature_digest_sign_final(void *ctx, unsigned char *si
     {
         memcpy(sig, temp_sig, *siglen);
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 
@@ -695,8 +686,6 @@ static int trustm_rsa_signature_digest_sign(void *ctx, unsigned char *sig, size_
     optiga_lib_status_t return_status;
     uint8_t digest_size;
     
-    int ret = 0;
-
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
     TRUSTM_PROVIDER_DBGFN(">");
@@ -798,13 +787,14 @@ static int trustm_rsa_signature_digest_sign(void *ctx, unsigned char *sig, size_
 
         memcpy(sig, temp_sig, *siglen);
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 
@@ -813,7 +803,6 @@ static int trustm_ecdsa_signature_digest_sign(void *ctx, unsigned char *sig, siz
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     optiga_lib_status_t return_status;
     uint8_t digest_size;
-    int ret = 0;
     uint8_t temp_sig[500];
     uint16_t temp_siglen = sizeof(temp_sig);
     TRUSTM_PROVIDER_DBGFN(">");
@@ -929,11 +918,13 @@ static int trustm_ecdsa_signature_digest_sign(void *ctx, unsigned char *sig, siz
 
         memcpy(sig, temp_sig, *siglen);
     }
-    ret = 1;
+    
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_rsa_signature_digest_verify_final(void *ctx, const unsigned char *sig, size_t siglen)
@@ -943,8 +934,6 @@ static int trustm_rsa_signature_digest_verify_final(void *ctx, const unsigned ch
     uint8_t digest_size;
     public_key_from_host_t public_key_details;
     
-    int ret = 0;
-
     uint8_t public_key_buffer[500];
     uint16_t public_key_buffer_length = sizeof(public_key_buffer);
     TRUSTM_PROVIDER_DBGFN(">");    
@@ -1098,12 +1087,12 @@ static int trustm_rsa_signature_digest_verify_final(void *ctx, const unsigned ch
         TRUSTM_PROVIDER_ERRFN("Error verifying in trustm_rsa_signature_digest_verify_final\nError code: 0x%.4x\n", return_status);
         goto error;
     }
-
-    ret = 1;
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_ecdsa_signature_digest_verify_final(void *ctx, const unsigned char *sig, size_t siglen)
@@ -1117,8 +1106,6 @@ static int trustm_ecdsa_signature_digest_verify_final(void *ctx, const unsigned 
     uint16_t uncompressed_pubkey_buffer_length;
     uint8_t pubkey_buffer[300];
     uint16_t pubkey_buffer_length;
-
-    int ret = 0;
 
     uint8_t input_sig[300];
     uint16_t input_sig_len = sizeof(input_sig);
@@ -1200,19 +1187,19 @@ static int trustm_ecdsa_signature_digest_verify_final(void *ctx, const unsigned 
         TRUSTM_PROVIDER_ERRFN("Error verifying in trustm_ecdsa_signature_digest_verify_final\nError code: 0x%.4x\n", return_status);
         goto error;
     }
-    ret = 1;
+    
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_rsa_signature_set_ctx_params(void *ctx, const OSSL_PARAM params[])
 {
     trustm_signature_ctx_t *trustm_signature_ctx = ctx;
     const OSSL_PARAM *p;
-
-    int ret = 0;
 
     TRUSTM_PROVIDER_DBGFN(">");
     if (params == NULL)
@@ -1223,7 +1210,7 @@ static int trustm_rsa_signature_set_ctx_params(void *ctx, const OSSL_PARAM param
     {
         if (p->data_type != OSSL_PARAM_UTF8_STRING){
             TRUSTM_PROVIDER_ERRFN("Invalid data type for digest parameter\n");
-            goto error;
+            return 0;
         } 
         else 
         {
@@ -1239,15 +1226,13 @@ static int trustm_rsa_signature_set_ctx_params(void *ctx, const OSSL_PARAM param
             else 
             {
                 TRUSTM_PROVIDER_ERRFN("Invalid hash algorithm\n");
-                goto error;
+                return 0;
             }
         }
     }
 
-    ret = 1;
     TRUSTM_PROVIDER_DBGFN("<");
-error:
-    return ret;
+    return 1;
 }
 
 static int trustm_ecdsa_signature_set_ctx_params(void *ctx, const OSSL_PARAM params[])
@@ -1312,8 +1297,6 @@ static int trustm_signature_get_ctx_params(void *ctx, OSSL_PARAM params[])
     OSSL_PARAM *p;
     unsigned char *aid = NULL;
     int aid_len = 0;
-    int ret = 0;
-
     TRUSTM_PROVIDER_DBGFN(">");
 
     x509_algor = X509_ALGOR_new();
@@ -1361,12 +1344,12 @@ static int trustm_signature_get_ctx_params(void *ctx, OSSL_PARAM params[])
             goto cleanup;
     }
 
-    ret = 1;  
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 cleanup:
     if (aid) OPENSSL_free(aid);
     if (x509_algor) X509_ALGOR_free(x509_algor);
-    return ret;
+    return 0;
 }
 
 static const OSSL_PARAM *trustm_signature_gettable_ctx_params(void *ctx, void *provctx)

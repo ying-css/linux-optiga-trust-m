@@ -236,7 +236,6 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
     uint8_t public_key[1024];
     uint16_t public_key_length = sizeof(public_key);
     uint16_t public_key_header_length;
-    int ret = 0;
     int i;
     optiga_lib_status_t return_status;
 
@@ -322,12 +321,13 @@ static int trustm_genpkey_rsa(trustm_object_ctx_t *trustm_object_ctx)
     {
         goto error;
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_object_load_pkey_rsa(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void *object_cbarg)
@@ -499,7 +499,6 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
 {
     optiga_lib_status_t return_status;
     int i = 0;
-    int ret = 0;
     uint8_t public_key[500];
     uint16_t public_key_length = sizeof(public_key);
     uint16_t public_key_header_length;
@@ -658,11 +657,12 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
         goto error;
     }   
 
-    ret = 1;
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 static int trustm_object_loadkey_e0e0(trustm_object_ctx_t *trustm_object_ctx, OSSL_CALLBACK *object_cb, void * object_cbarg)
 {
