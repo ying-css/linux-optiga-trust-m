@@ -74,8 +74,6 @@ static int rsa_asymcipher_encrypt(void *ctx, unsigned char *out, size_t *outlen,
 {
     trustm_rsa_asymcipher_ctx_t *trustm_rsa_asymcipher_ctx = ctx;
     
-    int ret = 0;
-
     optiga_lib_status_t return_status;
     public_key_from_host_t public_key_from_host;
     
@@ -128,11 +126,12 @@ static int rsa_asymcipher_encrypt(void *ctx, unsigned char *out, size_t *outlen,
         memcpy(out, trustm_rsa_asymcipher_ctx->encrypted_message, *outlen);
     }
 
-    ret = 1;
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 
@@ -142,7 +141,6 @@ static int rsa_asymcipher_decrypt(void *ctx, unsigned char *out, size_t *outlen,
     trustm_rsa_asymcipher_ctx_t *trustm_rsa_asymcipher_ctx = ctx;
     optiga_lib_status_t return_status;
     TRUSTM_PROVIDER_DBGFN(">");
-    int ret = 0;
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
 
     trustm_crypt_ShieldedConnection();
@@ -184,11 +182,12 @@ static int rsa_asymcipher_decrypt(void *ctx, unsigned char *out, size_t *outlen,
         memcpy(out, trustm_rsa_asymcipher_ctx->decrypted_message, *outlen);
     }
 
-    ret = 1;
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static void rsa_asymcipher_freectx(void *ctx)

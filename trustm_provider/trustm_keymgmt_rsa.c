@@ -108,9 +108,6 @@ static int trustm_rsa_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[
     size_t primes, bits;
     BIGNUM *e = NULL;
     TRUSTM_PROVIDER_DBGFN(">");
-
-    int ret = 0;
-
     if (params == NULL)
         return 1;
 
@@ -163,12 +160,12 @@ static int trustm_rsa_keymgmt_gen_set_params(void *ctx, const OSSL_PARAM params[
         BN_free(e);
     }
 
-    ret = 1;
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 
 error:
     if (e)BN_free(e);
-    return ret;
+    return 0;
 }
 
 static const OSSL_PARAM * trustm_rsa_keymgmt_gen_settable_params(void *ctx, void *provctx)
@@ -374,8 +371,6 @@ static int trustm_rsa_keymgmt_get_params(void *keydata, OSSL_PARAM params[])
     if (params == NULL)
         return 1;
 
-    int ret = 0;
-
     p = OSSL_PARAM_locate(params, OSSL_PKEY_PARAM_BITS);
     if (p != NULL)
     {
@@ -419,10 +414,10 @@ static int trustm_rsa_keymgmt_get_params(void *keydata, OSSL_PARAM params[])
         BN_free(bignum);
     }
 
-    ret = 1;
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
-    return ret;
+    return 0;
 }
 
 static const OSSL_PARAM * trustm_rsa_keymgmt_gettable_params(void *provctx)

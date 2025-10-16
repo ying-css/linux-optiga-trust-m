@@ -240,8 +240,6 @@ static int trustm_keyexch_derive_plain(trustm_keyexch_ctx_t *trustm_keyexch_ctx,
     uint16_t shared_secret_length;
     public_key_from_host_t peer_public_key_details;
 
-    int ret = 0;
-
     TRUSTM_PROVIDER_DBGFN(">");
     if (trustm_keyexch_ctx->peer_curve != trustm_keyexch_ctx->trustm_private_ec_key->key_curve)
     {
@@ -303,12 +301,13 @@ static int trustm_keyexch_derive_plain(trustm_keyexch_ctx_t *trustm_keyexch_ctx,
         }
         memcpy(secret, shared_secret, *secretlen);
     }
-
-    ret = 1;
+    
+	TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 

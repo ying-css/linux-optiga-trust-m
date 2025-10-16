@@ -103,7 +103,6 @@ static int trustm_digest_init(void *ctx, const OSSL_PARAM params[])
 {
     trustm_digest_ctx_t *trustm_digest_ctx = ctx;
     optiga_lib_status_t return_status;
-    int ret = 0;
     TRUSTM_PROVIDER_DBGFN(">");
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
     trustm_digest_ctx->me_crypt = me_crypt;
@@ -127,19 +126,19 @@ static int trustm_digest_init(void *ctx, const OSSL_PARAM params[])
         TRUSTM_PROVIDER_ERRFN("Error in trustm_digest_init\nError code : 0x%.4X\n", return_status);
         goto error;
     }
-    ret = 1;
-
-error:
+    
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
-    return ret;
+    return 1;
+error:
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE   
+    return 0;
 }
 
 static int trustm_digest_update(void *ctx, const unsigned char *in, size_t inl)
 {
     trustm_digest_ctx_t *trustm_digest_ctx = ctx;
     optiga_lib_status_t return_status;
-    int ret = 0;
     TRUSTM_PROVIDER_DBGFN(">");
     trustm_digest_ctx->data->hash_data_host.buffer = in;
     trustm_digest_ctx->data->hash_data_host.length = inl;
@@ -186,11 +185,12 @@ static int trustm_digest_update(void *ctx, const unsigned char *in, size_t inl)
         goto error;
     }
 
-    ret = 1;
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 static int trustm_digest_final(void *ctx, unsigned char *out, size_t *outl, size_t outsz)
@@ -198,7 +198,6 @@ static int trustm_digest_final(void *ctx, unsigned char *out, size_t *outl, size
     trustm_digest_ctx_t *trustm_digest_ctx = ctx;
     optiga_lib_status_t return_status;
     TRUSTM_PROVIDER_DBGFN(">");
-    int ret = 0;
     TRUSTM_PROVIDER_SSL_MUTEX_ACQUIRE
     trustm_digest_ctx->me_crypt = me_crypt;
 
@@ -233,11 +232,13 @@ static int trustm_digest_final(void *ctx, unsigned char *out, size_t *outl, size
         
         memcpy(out, trustm_digest_ctx->data->digest, *outl);
     }
+    
+    TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
     TRUSTM_PROVIDER_DBGFN("<");
-    ret = 1;
+    return 1;
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    return ret;
+    return 0;
 }
 
 

@@ -530,9 +530,9 @@ static void trustm_teardown(void *provctx)
     OSSL_LIB_CTX_free(trustm_ctx->libctx);
     OPENSSL_clear_free(trustm_ctx, sizeof(trustm_ctx_t));   
     pal_shm_mutex_release(&ssl_mutex);
-    //~ mssleep(1);
+    
     TRUSTM_PROVIDER_DBGFN("<");
-    //~ printf("Done\n");
+
 }
 
 // todo: expand this list as more functions get implemented
