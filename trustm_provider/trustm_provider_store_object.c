@@ -192,7 +192,7 @@ static void *trustm_object_open(void *provctx, const char *uri)
     return trustm_object_ctx;
 error:
     if (baseuri) OPENSSL_free(baseuri);
-    OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
+    if (trustm_object_ctx) OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
     return NULL;
 }
 
@@ -211,11 +211,13 @@ static void *trustm_object_attach(void *provctx, OSSL_CORE_BIO *cin)
     trustm_object_ctx->bio = BIO_new_from_core_bio(trustm_ctx->libctx, cin);
     if (trustm_object_ctx->bio == NULL)
     {
-        OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
-        return NULL;
+		goto error;
     }
     TRUSTM_PROVIDER_DBGFN("<");
     return trustm_object_ctx; 
+error:
+    if (trustm_object_ctx) OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
+    return NULL;
 }
 
 static const OSSL_PARAM *trustm_object_settable_params(void *provctx)
@@ -618,7 +620,7 @@ static int trustm_genpkey_ec(trustm_object_ctx_t *trustm_object_ctx)
         TRUSTM_PROVIDER_ERRFN("Error in optiga_crypt_ecc_generate_keypair\nError code : 0x%.4X\n", return_status);      
         goto error;
     }
-    
+    printf("Generating ECC keypair using TrustM....\n");
     trustmProvider_WaitForCompletion(BUSY_WAIT_TIME_OUT);
     return_status = optiga_lib_status;
 
@@ -1028,7 +1030,7 @@ static int trustm_object_close(void *ctx)
     
     BIO_free(trustm_object_ctx->bio);
 
-    OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
+    if (trustm_object_ctx) OPENSSL_clear_free(trustm_object_ctx, sizeof(trustm_object_ctx_t));
     TRUSTM_PROVIDER_DBGFN("<");
     return 1;
 }

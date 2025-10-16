@@ -385,7 +385,7 @@ static void *trustm_ec_keymgmt_gen(void *ctx, OSSL_CALLBACK *cb, void *cbarg)
 
 error:
     TRUSTM_PROVIDER_SSL_MUTEX_RELEASE
-    OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
+    if (trustm_ec_key) OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
     return NULL;
 }
 
@@ -420,7 +420,7 @@ static void trustm_ec_keymgmt_free(void *keydata)
     if (trustm_ec_key == NULL)
         return;
 
-    OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
+    if (trustm_ec_key) OPENSSL_clear_free(trustm_ec_key, sizeof(trustm_ec_key_t));
     TRUSTM_PROVIDER_DBGFN("<");
 }
 

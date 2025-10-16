@@ -458,11 +458,14 @@ static X509_PUBKEY *trustm_get_x509_ec_pubkey(trustm_ec_key_t *pkey)
     unsigned char *penc = NULL;
     int penclen;
     TRUSTM_PROVIDER_DBGFN(">");
+    if (pkey == NULL) {
+        return NULL;
+    }
     if ((pubkey = X509_PUBKEY_new()) == NULL)
         return NULL;
 
     penclen = trustm_ec_point_to_uncompressed_buffer(pkey, (void **)&penc);
-    if (penclen == 0)
+    if (penclen == 0 || penc == NULL)
     {
         X509_PUBKEY_free(pubkey);
         OPENSSL_free(penc);
@@ -486,7 +489,11 @@ static int trustm_ec_encode_public_SubjectPublicKeyInfo_pem(trustm_encoder_ctx_t
     X509_PUBKEY *pubkey;
     int ret;
     TRUSTM_PROVIDER_DBGFN(">");
-    if ((pubkey = trustm_get_x509_ec_pubkey(trustm_ec_key)) == NULL)
+    if (bout == NULL || trustm_ec_key == NULL) {
+        return 0;
+    }
+    pubkey = trustm_get_x509_ec_pubkey(trustm_ec_key);
+    if (pubkey == NULL)
         return 0;
 
     ret = PEM_write_bio_X509_PUBKEY(bout, pubkey);
