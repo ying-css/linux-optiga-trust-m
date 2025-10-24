@@ -1,12 +1,11 @@
 #!/bin/bash
-source config.sh
 
 echo "input1" >mydata1.txt
 echo "input2" >mydata2.txt
 
-for i in $(seq 1 5); do
-echo "$(date +'%m/%d:%r') --------------> test $i"
-set +e
+#for i in $(seq 1 5); do
+#echo "$(date +'%m/%d:%r') --------------> test $i"
+#set +e
 rm *.enc
 rm *.dec
 set -e
@@ -27,5 +26,5 @@ openssl pkeyutl -provider trustm_provider -inkey 0xe0fd:^ -decrypt -in mydata2.e
 P2=$!
 
 wait $P1 $P2
-done
+#done
 
