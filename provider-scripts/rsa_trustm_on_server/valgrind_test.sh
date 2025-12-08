@@ -51,13 +51,13 @@ for script in "$SCRIPT_DIR"/*.sh; do
 	    # Detect and remove lxterminal wrapper if present
             if [[ "$line" =~ ^lxterminal[[:space:]]+-e[[:space:]]*\"([^\"]+)\" ]]; then
                 inner_cmd="${BASH_REMATCH[1]}"
-                echo "⚠️ Detected lxterminal — running directly: $inner_cmd" | tee -a "$log_file"
+                echo "Detected lxterminal — running directly: $inner_cmd" | tee -a "$log_file"
                 line="$inner_cmd"
             fi
 
             # --- OpenSSL server handling ---
             if [[ "$line" == *"openssl s_server"* ]]; then
-                echo "🚀 Starting OpenSSL server under Valgrind..." | tee -a "$log_file"
+                echo "Starting OpenSSL server under Valgrind..." | tee -a "$log_file"
 
                 SERVER_IN="$LOG_DIR/server_in.$$"
                 mkfifo "$SERVER_IN"
@@ -108,15 +108,15 @@ for script in "$SCRIPT_DIR"/*.sh; do
 
                 # Wait before shutting down server
                 delay_seconds=2
-                echo "⏳ Waiting $delay_seconds seconds before closing server..." | tee -a "$log_file"
+                echo "Waiting $delay_seconds seconds before closing server..." | tee -a "$log_file"
                 sleep "$delay_seconds"
 
                 # Send "Q" to server if running for clean close
                 if [[ -n "${SERVER_PID:-}" ]]; then
-                    echo "💬 Sending 'Q' to OpenSSL server..." | tee -a "$log_file"
+                    echo "Sending 'Q' to OpenSSL server..." | tee -a "$log_file"
                     echo "Q" >"$SERVER_IN"
                     sleep 1
-                    echo "🛑 Stopping server (PID $SERVER_PID)..." | tee -a "$log_file"
+                    echo "Stopping server (PID $SERVER_PID)..." | tee -a "$log_file"
                     kill "$SERVER_PID" 2>/dev/null || true
                     wait "$SERVER_PID" 2>/dev/null || true
                     rm -f "$SERVER_IN"
