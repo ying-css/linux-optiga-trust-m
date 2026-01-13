@@ -42,26 +42,6 @@
     - [trustm\_protected\_update\_data](#trustm_protected_update_data)
     - [trustm\_update\_with\_PBS\_Auto](#trustm_update_with_pbs_auto)
     - [trustm\_probe](#trustm_probe)
-  - [OPTIGA™ Trust M OpenSSL Provider usage](#provider_usage)
-    - [rand](#rand)
-    - [req](#req)
-    - [pkey](#pkey)
-      - [KeyGen with public key as output](#keygen-with-public-key-as-output)
-      - [KeyGen with Reference Keys in file format as output ](#keygen-with-reference-keys-in-file-format-as-output)
-    - [pkeyutl](#pkeyutl)
-      - [Sign using Labels with key id](#sign-using-labels-with-key-id)
-      - [Sign using Reference Keys in file format ](#sign-using-reference-keys-in-file-format)
-    - [Referencing keys in OPTIGA™ Trust M](#referencing-keys-in-optiga-trust-m)
-    - [Testing TLS connection with ECC key](#testing-tls-connection-with-ecc-key)
-      - [Scenario where OPTIGA™ Trust M is on the client ](#test_tls_ecc_client)
-      - [Scenario where OPTIGA™ Trust M is on the server ](#test_tls_ecc_server)
-      - [Testing TLS connection with ECC Reference key in file format](#test_tls_ecc_file)
-      - [Testing Curl connection using ECC Reference key in file format](#test_curl_ecc_file)
-    - [Testing TLS connection with RSA key](#test_tls_rsa)
-      - [Scenario where OPTIGA™ Trust M is on the client ](#test_tls_rsa_client)
-      - [Scenario where OPTIGA™ Trust M is on the server ](#test_tls_rsa_server)
-    - [Generating a Test Server Certificate](#test_server_cert)
-    - [Using OPTIGA™ Trust M OpenSSL provider to sign and issue certificate](#using-optiga-trust-m-openssl-provider-to-sign-and-issue-certificate)
   - [Known observations](#known-observations)
     - [Secure communication bypass](#secure-communication-bypass)
 
@@ -70,7 +50,6 @@
 This is a Linux Tools for OPTIGA Trust V1/V3 on Linux platform that consist of:
 
 - [Command Line Interface examples](#cli_usage)
-- [OpenSSL Provider](#provider_usage)
 
 
 ### <a name="prerequisites"></a>Prerequisites
@@ -119,7 +98,7 @@ git clone --recurse-submodules https://github.com/Infineon/linux-optiga-trust-m.
 ```
 
 ### <a name="build_lib"></a>First time building the library
-Run the commands below in sequence to install the required dependencies and the OPTIGA™ Trust M provider. 
+Run the commands below in sequence to install the required dependencies and the OPTIGA™ Trust M CLI tools. 
 
     cd linux-optiga-trust-m
     ./trustm_installation_script.sh

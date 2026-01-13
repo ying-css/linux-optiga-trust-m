@@ -47,7 +47,7 @@ LIB_INSTALL_DIR = /usr/lib/aarch64-linux-gnu
 else
 LIB_INSTALL_DIR = /usr/lib/arm-linux-gnueabihf
 endif
-PROVIDER_INSTALL_DIR = $(LIB_INSTALL_DIR)/ossl-modules
+# PROVIDER_INSTALL_DIR = $(LIB_INSTALL_DIR)/ossl-modules
 
 INCDIR = $(TRUSTM)/include
 INCDIR += $(TRUSTM)/include/ifx_i2c
@@ -58,7 +58,6 @@ INCDIR += $(TRUSTM)/include/pal
 INCDIR += $(TRUSTM)/extras/pal/linux
 INCDIR += $(TRUSTM)/extras/pal/linux/include
 INCDIR += trustm_helper/include
-INCDIR += trustm_provider
 INCDIR += $(TRUSTM)/external/mbedtls/include
 #INCDIR += $(TRUSTM)/external/mbedtls/include/mbedtls
 INCDIR += $(TRUSTM)/config
