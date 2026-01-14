@@ -41,13 +41,11 @@ LIBDIR += trustm_helper
 ARCH := $(shell dpkg --print-architecture)
 BINDIR = bin
 APPDIR = ex_cli_applications
-# PROVDIR = trustm_provider
 ifeq ($(ARCH), arm64)
 LIB_INSTALL_DIR = /usr/lib/aarch64-linux-gnu
 else
 LIB_INSTALL_DIR = /usr/lib/arm-linux-gnueabihf
 endif
-# PROVIDER_INSTALL_DIR = $(LIB_INSTALL_DIR)/ossl-modules
 
 INCDIR = $(TRUSTM)/include
 INCDIR += $(TRUSTM)/include/ifx_i2c
@@ -110,11 +108,6 @@ ifdef APPDIR
 	APPS := $(patsubst %.c,%,$(APPSRC))
 endif
 
-# ifdef PROVDIR
-	# PROVSRC := $(shell find $(PROVDIR) -name '*.c')
-	# PROVOBJ := $(patsubst %.c,%.o,$(PROVSRC))
-	# PROVIDER = trustm_provider.so
-# endif
 
 CC = gcc
 DEBUG = -g
@@ -170,8 +163,6 @@ clean :
 	@rm -rf $(OTHOBJ)
 	@echo "Removing *.o from $(APPDIR)"
 	@rm -rf $(APPOBJ)
-	@echo "Removing *.o from $(PROVDIR)"
-	@rm -rf $(PROVOBJ)
 	@echo "Removing all application from $(APPDIR)"	
 	@rm -rf $(APPS)
 	@echo "Removing all application from $(BINDIR)"	
@@ -179,10 +170,6 @@ clean :
 	@echo "Removing all hidden files"	
 	@rm -rf .trustm_*
 			
-# $(BINDIR)/$(PROVIDER): %: $(PROVOBJ) $(INCSRC) $(BINDIR)/$(LIB)
-	# @echo "******* Linking $@ "
-	# @mkdir -p bin
-	# @$(CC)   $(PROVOBJ) $(LDFLAGS) $(LDFLAGS_1) $(LDFLAGS_2)  -shared -o $@
 	
 $(APPS): %: $(OTHOBJ) $(INCSRC) $(BINDIR)/$(LIB) %.o
 			@echo "******* Linking $@ "
