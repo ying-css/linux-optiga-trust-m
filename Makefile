@@ -26,6 +26,26 @@
 
 TRUSTM = trustm_lib
 
+.DEFAULT_GOAL := all
+# Select which mbedTLS tree to compile from trustm_lib/external/
+# Usage: make MBEDTLS_VARIANT=4
+MBEDTLS_VARIANT ?= 4
+
+ifeq ($(MBEDTLS_VARIANT),4)
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-4.x
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_4.x_default_config.h
+MBEDTLS_INSTALL_DIR := $(MBEDTLS_DIR)/install
+MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
+else ifeq ($(MBEDTLS_VARIANT),3)
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-3.x
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_3.x_default_config.h
+MBEDTLS_INSTALL_DIR := $(MBEDTLS_DIR)/install
+MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
+else
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_default_config.h
+endif
+
 BUILD_FOR_ULTRA96 = NO
 USE_LIBGPIOD_RPI = YES
 
@@ -35,7 +55,17 @@ LIBDIR += $(TRUSTM)/src/crypt
 LIBDIR += $(TRUSTM)/src/comms
 LIBDIR += $(TRUSTM)/src/common
 LIBDIR += $(TRUSTM)/src/cmd
-LIBDIR += $(TRUSTM)/external/mbedtls/library
+ifeq ($(MBEDTLS_VARIANT),2)
+  LIBDIR += $(MBEDTLS_DIR)/library
+endif
+
+MBEDTLS_BUILD_DIR ?= $(MBEDTLS_DIR)/build-install
+
+ifeq ($(MBEDTLS_VARIANT),4)
+  MBEDTLS_INSTALL_DIR := $(MBEDTLS_DIR)/install
+  LDFLAGS += -L$(MBEDTLS_INSTALL_DIR)/lib
+  LDFLAGS += -lmbedtls -lmbedx509 -lmbedcrypto
+endif
 LIBDIR += trustm_helper
 
 ARCH := $(shell dpkg --print-architecture)
@@ -59,10 +89,12 @@ INCDIR += $(TRUSTM)/extras/pal/linux
 INCDIR += $(TRUSTM)/extras/pal/linux/include
 INCDIR += trustm_helper/include
 INCDIR += trustm_provider
-INCDIR += $(TRUSTM)/external/mbedtls/include
+INCDIR += $(MBEDTLS_DIR)/include
 #INCDIR += $(TRUSTM)/external/mbedtls/include/mbedtls
 INCDIR += $(TRUSTM)/config
-
+ifeq ($(MBEDTLS_VARIANT),4)
+INCDIR += $(MBEDTLS_INSTALL_DIR)/include
+endif
 
 ifdef INCDIR
 INCSRC := $(shell find $(INCDIR) -name '*.h')
@@ -85,7 +117,13 @@ ifdef LIBDIR
         	LIBSRC += $(PALDIR)/pal_os_lock.c
 	        LIBSRC += $(PALDIR)/pal_os_timer.c
 	        LIBSRC += $(PALDIR)/pal_os_memory.c
-			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c       	
+			ifeq ($(MBEDTLS_VARIANT),2)
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c
+			else ifeq ($(MBEDTLS_VARIANT),4)
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_psa.c
+			else
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_openssl.c
+			endif
 			LIBSRC += $(TRUSTM)/extras/pal/linux/pal_shared_mutex.c       	
         	ifeq ($(USE_LIBGPIOD_RPI), YES)
 	                LIBSRC += $(PALDIR)/target/gpiod/pal_ifx_i2c_config.c
@@ -138,7 +176,9 @@ ifeq ($(USE_LIBGPIOD_RPI), YES)
 endif
 #CFLAGS += -DENGINE_DYNAMIC_SUPPORT
 CFLAGS += -DOPTIGA_COMMS_SET_RESET_SOFT
-CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../../trustm_lib/config/mbedtls_default_config.h\"
+ifeq ($(MBEDTLS_VARIANT),2)
+CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../../$(MBEDTLS_CONFIG)\"
+endif
 
 LDFLAGS += -lpthread
 LDFLAGS += -lssl
@@ -158,8 +198,27 @@ LDFLAGS_2 += -lcrypto
 
 .Phony : install uninstall all clean
 
-all : $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
+# Build mbedTLS 4.x and install headers/libs locally (needed for PSA headers)
+ifeq ($(MBEDTLS_VARIANT),4)
+MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
 
+$(MBEDTLS_LIB):
+	@echo "******* Building+installing mbedTLS 4.x into $(MBEDTLS_INSTALL_DIR)"
+	@cd $(MBEDTLS_DIR) && git submodule update --init --recursive
+	@rm -rf $(MBEDTLS_BUILD_DIR) $(MBEDTLS_INSTALL_DIR)
+	@mkdir -p $(MBEDTLS_BUILD_DIR)
+	@cmake -S $(MBEDTLS_DIR) -B $(MBEDTLS_BUILD_DIR) -DCMAKE_INSTALL_PREFIX="$(abspath $(MBEDTLS_INSTALL_DIR))" -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-DMBEDTLS_USER_CONFIG_FILE=\\\"$(abspath $(MBEDTLS_CONFIG))\\\""
+	@cmake --build $(MBEDTLS_BUILD_DIR) -j2
+	@cmake --install $(MBEDTLS_BUILD_DIR)
+else
+MBEDTLS_LIB :=
+endif
+
+ifeq ($(MBEDTLS_VARIANT),4)
+all : $(MBEDTLS_LIB) $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
+else
+all : $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
+endif
 
 install:
 	@echo "Create symbolic link to the openssl provider $(PROVIDER_INSTALL_DIR)/$(PROVIDER)"
@@ -194,18 +253,25 @@ $(BINDIR)/$(PROVIDER): %: $(PROVOBJ) $(INCSRC) $(BINDIR)/$(LIB)
 	@mkdir -p bin
 	@$(CC)   $(PROVOBJ) $(LDFLAGS) $(LDFLAGS_1) $(LDFLAGS_2)  -shared -o $@
 	
-$(APPS): %: $(OTHOBJ) $(INCSRC) $(BINDIR)/$(LIB) %.o
+$(APPS): %: $(OTHOBJ) $(INCSRC) $(BINDIR)/$(LIB) %.o $(MBEDTLS_LIB)
 			@echo "******* Linking $@ "
 			@mkdir -p bin
 			@$(CC) $@.o $(LDFLAGS_1) $(LDFLAGS) $(OTHOBJ) -o $@
 			@mv $@ bin/.	
 
-$(BINDIR)/$(LIB): %: $(LIBOBJ) $(INCSRC)
-	@echo "******* Linking $@ "
+$(BINDIR)/$(LIB): %: $(LIBOBJ) $(INCSRC) $(MBEDTLS_LIB)
 	@mkdir -p bin
 	@$(CC) $(LIBOBJ) $(LDFLAGS)  -shared -o $@
 
-$(LIBOBJ): %.o: %.c $(INCSRC)
+$(LIBOBJ): %.o: %.c $(INCSRC) $(MBEDTLS_LIB)
 	@echo "+++++++ Generating lib object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
+	
+$(APPOBJ): %.o: %.c $(INCSRC) $(MBEDTLS_LIB)
+	@echo "+++++++ Generating app object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
+    
+$(PROVOBJ): %.o: %.c $(INCSRC) $(MBEDTLS_LIB)
+	@echo "+++++++ Generating provider object: $< "
 	@$(CC) $(CFLAGS) $< -o $@
 

@@ -1,3 +1,4 @@
 [submodule "trustm_lib"]
 	path = trustm_lib
-	url = https://github.com/Infineon/optiga-trust-m.git
+	url = https://github.com/ying-css/optiga-trust-m.git
+	branch = feature/mbedtls-4.2

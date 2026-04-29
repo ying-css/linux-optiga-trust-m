@@ -33,17 +33,19 @@
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/asn1.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 #include "optiga_util.h"
 #include "optiga_crypt.h"
 #include "pal_os_datastore.h"
 #include "pal_os_memory.h"
 #include "pal_crypt.h"
-#include "mbedtls/ccm.h"
-#include "mbedtls/md.h"
-#include "mbedtls/ssl.h"
+
 
 #include "trustm_helper.h"
+
+#include <psa/crypto.h>
 
 typedef struct _OPTFLAG {   
     uint16_t    write       : 1;
@@ -102,57 +104,66 @@ uint8_t hmac_buffer[32] = {0x00};
 
 static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
                                    uint16_t hmac_type,
-                                   const uint8_t * secret_key,
+                                   const uint8_t *secret_key,
                                    uint16_t secret_key_len,
-                                   const uint8_t * input_data,
+                                   const uint8_t *input_data,
                                    uint32_t input_data_length,
-                                   uint8_t * hmac)
+                                   uint8_t *hmac)
 {
-    pal_status_t return_value = PAL_STATUS_FAILURE;
+    (void)p_pal_crypt;
 
-    const mbedtls_md_info_t * hmac_info;
-    mbedtls_md_type_t digest_type;
-    
-    do
-    {
-#ifdef OPTIGA_LIB_DEBUG_NULL_CHECK
-        if ((NULL == input_data) || (NULL == hmac))
-        {
-            break;
-        }
-#endif  //OPTIGA_LIB_DEBUG_NULL_CHECK
+    psa_status_t status;
+    psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_key_id_t key_id = 0;
+    size_t mac_len = 0;
 
-        digest_type = (((uint16_t)OPTIGA_HMAC_SHA_256 == hmac_type)? MBEDTLS_MD_SHA256: MBEDTLS_MD_SHA384);
-        
-        hmac_info = mbedtls_md_info_from_type(digest_type);
+    if (secret_key == NULL || input_data == NULL || hmac == NULL)
+        return PAL_STATUS_FAILURE;
 
-        if (0 != mbedtls_md_hmac(hmac_info, secret_key, secret_key_len, input_data, input_data_length, hmac))
-        {
-            break;
-        }
-        
-        return_value = PAL_STATUS_SUCCESS;
+    /* These apps use SHA-256 only */
+    if ((uint16_t)OPTIGA_HMAC_SHA_256 != hmac_type)
+        return PAL_STATUS_FAILURE;
 
-    } while (FALSE);
+    psa_set_key_type(&attr, PSA_KEY_TYPE_HMAC);
+    psa_set_key_bits(&attr, (size_t)secret_key_len * 8u);
+    psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_MESSAGE);
+    psa_set_key_algorithm(&attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 
-    return return_value;
+    status = psa_import_key(&attr, secret_key, (size_t)secret_key_len, &key_id);
+    psa_reset_key_attributes(&attr);
+    if (status != PSA_SUCCESS)
+        return PAL_STATUS_FAILURE;
+
+    status = psa_mac_compute(key_id,
+                             PSA_ALG_HMAC(PSA_ALG_SHA_256),
+                             input_data,
+                             (size_t)input_data_length,
+                             hmac,
+                             32,
+                             &mac_len);
+
+    psa_destroy_key(key_id);
+
+    if (status != PSA_SUCCESS || mac_len != 32)
+        return PAL_STATUS_FAILURE;
+
+    return PAL_STATUS_SUCCESS;
 }
 
-pal_status_t CalcHMAC(const uint8_t * secret_key,
-                           uint16_t secret_key_len,
-                           const uint8_t * input_data,
-                           uint32_t input_data_length,
-                           uint8_t * hmac)
+pal_status_t CalcHMAC(const uint8_t *secret_key,
+                      uint16_t secret_key_len,
+                      const uint8_t *input_data,
+                      uint32_t input_data_length,
+                      uint8_t *hmac)
 {
-    return(pal_crypt_hmac(NULL,
+    return pal_crypt_hmac(NULL,
                           (uint16_t)OPTIGA_HMAC_SHA_256,
                           secret_key,
                           secret_key_len,
                           input_data,
                           input_data_length,
-                          hmac));
+                          hmac);
 }
-
 
 static void _helpmenu(void)
 {
@@ -214,6 +225,12 @@ int main (int argc, char **argv)
 /***************************************************************
  * Getting Input from CLI
  **************************************************************/
+    psa_status_t psa_status = psa_crypto_init();
+    if (psa_status != PSA_SUCCESS) {
+        printf("psa_crypto_init failed: %ld\n", (long) psa_status);
+        return 1;
+    }
+    
     uOptFlag.all = 0;
     printf("\n");
     do // Begin of DO WHILE(FALSE) for error handling.
