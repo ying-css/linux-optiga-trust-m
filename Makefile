@@ -61,10 +61,16 @@ endif
 
 MBEDTLS_BUILD_DIR ?= $(MBEDTLS_DIR)/build-install
 
-ifeq ($(MBEDTLS_VARIANT),4)
+ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
   MBEDTLS_INSTALL_DIR := $(MBEDTLS_DIR)/install
   LDFLAGS += -L$(MBEDTLS_INSTALL_DIR)/lib
-  LDFLAGS += -lmbedtls -lmbedx509 -lmbedcrypto
+  LDFLAGS += -lmbedtls -lmbedx509
+endif
+ifeq ($(MBEDTLS_VARIANT),4)
+  LDFLAGS += -lmbedcrypto
+endif
+ifeq ($(MBEDTLS_VARIANT),3)
+  LDFLAGS += -ltfpsacrypto
 endif
 LIBDIR += trustm_helper
 
@@ -92,7 +98,7 @@ INCDIR += trustm_provider
 INCDIR += $(MBEDTLS_DIR)/include
 #INCDIR += $(TRUSTM)/external/mbedtls/include/mbedtls
 INCDIR += $(TRUSTM)/config
-ifeq ($(MBEDTLS_VARIANT),4)
+ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 INCDIR += $(MBEDTLS_INSTALL_DIR)/include
 endif
 
@@ -119,7 +125,7 @@ ifdef LIBDIR
 	        LIBSRC += $(PALDIR)/pal_os_memory.c
 			ifeq ($(MBEDTLS_VARIANT),2)
 			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c
-			else ifeq ($(MBEDTLS_VARIANT),4)
+			else ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_psa.c
 			else
 			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_openssl.c
@@ -199,11 +205,11 @@ LDFLAGS_2 += -lcrypto
 .Phony : install uninstall all clean
 
 # Build mbedTLS 4.x and install headers/libs locally (needed for PSA headers)
-ifeq ($(MBEDTLS_VARIANT),4)
+ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
 
 $(MBEDTLS_LIB):
-	@echo "******* Building+installing mbedTLS 4.x into $(MBEDTLS_INSTALL_DIR)"
+	@echo "******* Building+installing mbedTLS $(MBEDTLS_VARIANT) into $(MBEDTLS_INSTALL_DIR)"
 	@cd $(MBEDTLS_DIR) && git submodule update --init --recursive
 	@rm -rf $(MBEDTLS_BUILD_DIR) $(MBEDTLS_INSTALL_DIR)
 	@mkdir -p $(MBEDTLS_BUILD_DIR)
@@ -214,7 +220,7 @@ else
 MBEDTLS_LIB :=
 endif
 
-ifeq ($(MBEDTLS_VARIANT),4)
+ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 all : $(MBEDTLS_LIB) $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
 else
 all : $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
