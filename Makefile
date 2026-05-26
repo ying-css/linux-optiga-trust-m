@@ -209,7 +209,7 @@ ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
 
 $(MBEDTLS_LIB):
-    @which cmake > /dev/null 2>&1 || (echo "cmake not found, installing..." && sudo apt-get update && sudo apt-get install -y cmake)
+	@which cmake > /dev/null 2>&1 || (echo "cmake not found, installing..." && sudo apt-get update && sudo apt-get install -y cmake)
 	@echo "******* Building+installing mbedTLS $(MBEDTLS_VARIANT) into $(MBEDTLS_INSTALL_DIR)"
 	@cd $(MBEDTLS_DIR) && git submodule update --init --recursive
 	@rm -rf $(MBEDTLS_BUILD_DIR) $(MBEDTLS_INSTALL_DIR)
