@@ -1,6 +1,4 @@
 #!/bin/sh
-
-
 sudo apt update
 sudo apt -y install git gcc build-essential libssl-dev gpiod libgpiod-dev curl xxd cmake
 set -e
