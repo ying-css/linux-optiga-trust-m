@@ -209,14 +209,14 @@ ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
 MBEDTLS_LIB := $(MBEDTLS_INSTALL_DIR)/lib/libmbedtls.a
 
 $(MBEDTLS_LIB):
-    @which cmake > /dev/null 2>&1 || (echo "cmake not found, installing..." && sudo apt-get update && sudo apt-get install -y cmake)
+	@which cmake > /dev/null 2>&1 || (echo "cmake not found, installing..." && sudo apt-get update && sudo apt-get install -y cmake)
 	@echo "******* Building+installing mbedTLS $(MBEDTLS_VARIANT) into $(MBEDTLS_INSTALL_DIR)"
 	@cd $(MBEDTLS_DIR) && git submodule update --init --recursive
-	@rm -rf $(MBEDTLS_BUILD_DIR) $(MBEDTLS_INSTALL_DIR)
-	@mkdir -p $(MBEDTLS_BUILD_DIR)
-	@cmake -S $(MBEDTLS_DIR) -B $(MBEDTLS_BUILD_DIR) -DCMAKE_INSTALL_PREFIX="$(abspath $(MBEDTLS_INSTALL_DIR))" -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-DMBEDTLS_USER_CONFIG_FILE=\\\"$(abspath $(MBEDTLS_CONFIG))\\\""
-	@cmake --build $(MBEDTLS_BUILD_DIR) -j2
-	@cmake --install $(MBEDTLS_BUILD_DIR)
+	@rm -rf $(MBEDTLS_DIR)/build $(MBEDTLS_INSTALL_DIR)
+	@cd $(MBEDTLS_DIR) && mkdir -p build && cd build && \
+	cmake .. -DCMAKE_INSTALL_PREFIX=../install \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
+	make -j && make install
 else
 MBEDTLS_LIB :=
 endif

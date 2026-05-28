@@ -1,19 +1,14 @@
 #!/bin/sh
-
-
-sudo apt update 
-sudo apt -y install git gcc libssl-dev gpiod libgpiod-dev curl xxd
-sudo apt install cmake -y
-
+sudo apt update
+sudo apt -y install git gcc build-essential libssl-dev gpiod libgpiod-dev curl xxd cmake
 set -e
 echo "-----> Build Trust M Linux Tools and provider"
 sudo make uninstall
 make clean
-make -j5
+make MBEDTLS_VARIANT=4 -j5
 sudo make install
-
 echo "-----> Build Protected Update Set tool"
 cd ex_protected_update_data_set/Linux/
 make clean
-make -j5 
-sudo make install 
+make -j5
+sudo make install
