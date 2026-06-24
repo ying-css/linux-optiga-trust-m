@@ -61,17 +61,6 @@ LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/extras
 LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/drivers/builtin/src
 endif
 
-# ifneq (,$(filter $(MBEDTLS_VARIANT),3 4))
-#   LDFLAGS += -L$(MBEDTLS_INSTALL_DIR)/lib
-#   LDFLAGS += -lmbedtls -lmbedx509
-# endif
-# ifeq ($(MBEDTLS_VARIANT),4)
-#   LDFLAGS += -ltfpsacrypto
-# endif
-# ifeq ($(MBEDTLS_VARIANT),3)
-#   LDFLAGS += -lmbedcrypto
-# endif
-
 
 ARCH := $(shell dpkg --print-architecture)
 BINDIR = bin
