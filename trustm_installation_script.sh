@@ -18,7 +18,7 @@ if [ "$MBEDTLS_VARIANT" -eq 4 ]; then
     python3 framework/scripts/make_generated_files.py
 )
 fi
-sudo make uninstall
+sudo make uninstall MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
 make clean MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
 make -j5 MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
 sudo make install MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
