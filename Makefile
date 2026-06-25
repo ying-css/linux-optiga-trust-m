@@ -34,6 +34,7 @@ MBEDTLS_VARIANT ?= 4
 ifeq ($(MBEDTLS_VARIANT),4)
 MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-4.x
 MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_4.x_default_config.h
+TF_PSA_DIR := $(MBEDTLS_DIR)/tf-psa-crypto
 else ifeq ($(MBEDTLS_VARIANT),3)
 MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-3.x
 MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_3.x_default_config.h
@@ -54,11 +55,11 @@ LIBDIR += $(TRUSTM)/src/cmd
 LIBDIR += $(MBEDTLS_DIR)/library
 LIBDIR += trustm_helper
 ifeq ($(MBEDTLS_VARIANT),4)
-LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/core
-LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/platform
-LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/utilities
-LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/extras
-LIBDIR += $(MBEDTLS_DIR)/tf-psa-crypto/drivers/builtin/src
+LIBDIR += $(TF_PSA_DIR)/core
+LIBDIR += $(TF_PSA_DIR)/platform
+LIBDIR += $(TF_PSA_DIR)/utilities
+LIBDIR += $(TF_PSA_DIR)/extras
+LIBDIR += $(TF_PSA_DIR)/drivers/builtin/src
 endif
 
 
@@ -87,14 +88,14 @@ INCDIR += $(MBEDTLS_DIR)/include
 INCDIR += $(TRUSTM)/config
 ifeq ($(MBEDTLS_VARIANT),4) 
 INCDIR += $(MBEDTLS_DIR)/library
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/include
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/utilities
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/dispatch
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/platform
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/drivers/builtin/include
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/drivers/builtin/src
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/core
-INCDIR += $(MBEDTLS_DIR)/tf-psa-crypto/extras
+INCDIR += $(TF_PSA_DIR)/include
+INCDIR += $(TF_PSA_DIR)/utilities
+INCDIR += $(TF_PSA_DIR)/dispatch
+INCDIR += $(TF_PSA_DIR)/platform
+INCDIR += $(TF_PSA_DIR)/drivers/builtin/include
+INCDIR += $(TF_PSA_DIR)/drivers/builtin/src
+INCDIR += $(TF_PSA_DIR)/core
+INCDIR += $(TF_PSA_DIR)/extras
 endif
 
 ifdef INCDIR
