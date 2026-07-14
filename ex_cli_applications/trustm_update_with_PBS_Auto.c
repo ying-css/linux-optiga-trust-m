@@ -143,7 +143,6 @@ static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
         }
 
         psa_set_key_type(&attr, PSA_KEY_TYPE_HMAC);
-        psa_set_key_bits(&attr, (size_t)secret_key_len * 8u);
         psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_MESSAGE);
         psa_set_key_algorithm(&attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 
@@ -229,7 +228,8 @@ int main (int argc, char **argv)
 
     uint16_t offset = 0;
     uint32_t bytes_to_read = 0;
-    uint16_t optiga_oid;
+    uint32_t auth_len = 0;
+    uint16_t optiga_oid = 0;
     uint8_t read_data_buffer[2048];
     uint8_t pbs_buffer[64] = {0};
     uint8_t auth_buffer[64] = {0};
@@ -252,7 +252,7 @@ int main (int argc, char **argv)
     int option = 0;                    // Command line option.
 
     uint16_t secret_oid = 0xF1D0;// default secret OID;
-    uint8_t hmac_type=0x20;// default HMAC_SHA256
+    uint8_t hmac_type = (uint8_t)OPTIGA_HMAC_SHA_256;// default HMAC_SHA256
 
 /***************************************************************
  * Getting Input from CLI
@@ -274,7 +274,7 @@ int main (int argc, char **argv)
         opterr = 0; // Disable getopt error messages in case of unknown parameters
 
         // Loop through parameters with getopt.
-        while (-1 != (option = getopt(argc, argv, "w:r:i:I:p:P:a:A:c:eXh")))
+        while (-1 != (option = getopt(argc, argv, "w:r:i:I:o:p:P:a:A:c:eXh")))
         {
             switch (option)
             {
@@ -293,6 +293,10 @@ int main (int argc, char **argv)
                 case 'I': // Input value
                     uOptFlag.flags.invalue = 1;
                     inValue = optarg;
+                    break;
+                case 'o': // Output filename
+                    uOptFlag.flags.outfile = 1;
+                    outFile = optarg;
                     break;
                 case 'p': // Input PBS filename
                     uOptFlag.flags.pbs = 1;
@@ -369,21 +373,39 @@ int main (int argc, char **argv)
         {   
             if (uOptFlag.flags.pbsfile == 1) 
             {
-                bytes_to_read = 0;
-                trustmReadDER(pbs_buffer, &bytes_to_read, pbsFile);
-                if (bytes_to_read <= 0)
+                uint8_t stage[2048];
+                uint32_t stage_len = 0;
+                if (trustmReadDER(stage, &stage_len, pbsFile) != 0 || stage_len == 0)
                 {
-                    printf("Read file: %s error!!!", pbsFile);
+                    printf("Read file: %s error!!!\n", pbsFile);
+                    break;
                 }
+                if (stage_len > sizeof(pbs_buffer))
+                {
+                    printf("PBS file too large: %u bytes (max %zu)\n",
+                           stage_len, sizeof(pbs_buffer));
+                    break;
+                }
+                memset(pbs_buffer, 0, sizeof(pbs_buffer));
+                memcpy(pbs_buffer, stage, stage_len);
+                bytes_to_read = stage_len;
             } 
             else 
             {
-                bytes_to_read = 64;
-                
-                for (size_t count = 0; count < sizeof pbs_buffer/sizeof *pbs_buffer; count++) {
-                    sscanf(pbsInput, "%2hhx", &pbs_buffer[count]);
+                size_t in_len = (pbsInput != NULL) ? strlen(pbsInput) : 0;
+                size_t max_bytes = sizeof(pbs_buffer);
+                size_t n_bytes = in_len / 2u;
+                if (n_bytes > max_bytes) {
+                    n_bytes = max_bytes;
+                }
+                memset(pbs_buffer, 0, sizeof(pbs_buffer));
+                for (size_t count = 0; count < n_bytes; count++) {
+                    if (sscanf(pbsInput, "%2hhx", &pbs_buffer[count]) != 1) {
+                        break;
+                    }
                     pbsInput += 2;
                 }
+                bytes_to_read = (uint32_t)n_bytes;
             }
 
             pal_return_status = pal_os_datastore_write(OPTIGA_PLATFORM_BINDING_SHARED_SECRET_ID,
@@ -403,21 +425,39 @@ int main (int argc, char **argv)
         {   
             if (uOptFlag.flags.authfile == 1) 
             {
-                bytes_to_read = 0;
-                trustmReadDER(auth_buffer, &bytes_to_read, authFile);
-                if (bytes_to_read <= 0)
+                uint8_t stage[2048];
+                uint32_t stage_len = 0;
+                if (trustmReadDER(stage, &stage_len, authFile) != 0 || stage_len == 0)
                 {
-                    printf("Read file: %s error!!!", authFile);
+                    printf("Read file: %s error!!!\n", authFile);
+                    break;
                 }
+                if (stage_len > sizeof(auth_buffer))
+                {
+                    printf("Auth file too large: %u bytes (max %zu)\n",
+                           stage_len, sizeof(auth_buffer));
+                    break;
+                }
+                memset(auth_buffer, 0, sizeof(auth_buffer));
+                memcpy(auth_buffer, stage, stage_len);
+                auth_len = stage_len;
             } 
             else 
             {
-                bytes_to_read = 64;
-                
-                for (size_t count = 0; count < sizeof auth_buffer/sizeof *auth_buffer; count++) {
-                    sscanf(authInput, "%2hhx", &auth_buffer[count]);
+                size_t in_len = (authInput != NULL) ? strlen(authInput) : 0;
+                size_t max_bytes = sizeof(auth_buffer);
+                size_t n_bytes = in_len / 2u;
+                if (n_bytes > max_bytes) {
+                    n_bytes = max_bytes;
+                }
+                memset(auth_buffer, 0, sizeof(auth_buffer));
+                for (size_t count = 0; count < n_bytes; count++) {
+                    if (sscanf(authInput, "%2hhx", &auth_buffer[count]) != 1) {
+                        break;
+                    }
                     authInput += 2;
                 }
+                auth_len = (uint32_t)n_bytes;
             }
 
             // if(uOptFlag.flags.bypass != 1)
@@ -457,7 +497,7 @@ int main (int argc, char **argv)
             
             // Function name in line with SRM
             pal_return_status = CalcHMAC(auth_buffer,
-                                    sizeof(auth_buffer),
+                                    (uint16_t)auth_len,
                                     input_data_buffer,
                                     sizeof(input_data_buffer),
                                     hmac_buffer);
@@ -521,13 +561,14 @@ int main (int argc, char **argv)
                 OPTIGA_UTIL_SET_COMMS_PROTECTION_LEVEL(me_util, OPTIGA_COMMS_FULL_PROTECTION);
             }
 
-            bytes_to_read = sizeof(read_data_buffer);
+            uint16_t read_len = (uint16_t)sizeof(read_data_buffer);
             optiga_lib_status = OPTIGA_LIB_BUSY;
             return_status = optiga_util_read_data(me_util,
                                                 optiga_oid,
                                                 offset,
                                                 read_data_buffer,
-                                                (uint16_t *)&bytes_to_read);
+                                                &read_len);
+            bytes_to_read = read_len;
             if (OPTIGA_LIB_SUCCESS != return_status)
                 break;
             //Wait until the optiga_util_read_metadata operation is completed
@@ -574,10 +615,16 @@ int main (int argc, char **argv)
             if(uOptFlag.flags.infile == 1)
             {
                 bytes_to_read = 0;
-                trustmReadDER(read_data_buffer, &bytes_to_read, inFile);
-                if (bytes_to_read <= 0)
+                if (trustmReadDER(read_data_buffer, &bytes_to_read, inFile) != 0 ||
+                    bytes_to_read == 0)
                 {
-                    printf("Read file: %s error!!!", inFile);
+                    printf("Read file: %s error!!!\n", inFile);
+                    break;
+                }
+                if (bytes_to_read > sizeof(read_data_buffer))
+                {
+                    printf("Input file too large: %u bytes (max %zu)\n",
+                           bytes_to_read, sizeof(read_data_buffer));
                     break;
                 }
             }
@@ -592,6 +639,8 @@ int main (int argc, char **argv)
                     {
                         printf("i2d_X509 failed for %s\n", inFile);
                         if (pCert != NULL) OPENSSL_free(pCert);
+                        X509_free(x509Cert);
+                        x509Cert = NULL;
                         break;
                     }
                     if ((size_t)cert_len > sizeof(read_data_buffer))
@@ -599,11 +648,15 @@ int main (int argc, char **argv)
                         printf("Cert too large (%d bytes) for buffer (%zu)\n",
                                cert_len, sizeof(read_data_buffer));
                         OPENSSL_free(pCert);
+                        X509_free(x509Cert);
+                        x509Cert = NULL;
                         break;
                     }
                     pal_os_memcpy(read_data_buffer, pCert, (size_t)cert_len);
                     bytes_to_read = (uint32_t)cert_len;
                     OPENSSL_free(pCert);
+                    X509_free(x509Cert);
+                    x509Cert = NULL;
                 }
                 else
                 {

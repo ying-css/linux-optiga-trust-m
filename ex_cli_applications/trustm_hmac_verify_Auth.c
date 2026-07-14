@@ -87,6 +87,7 @@ void helpmenu(void)
     printf("-s <filename> : Input user secret \n");
     printf("-r <OID>      : Read from target OID\n");
     printf("-w <OID>      : Write into target OID 0xNNNN \n");
+    printf("-i <filename> : Input data to write into target OID (use with -w)\n");
     printf("-o <filename> : Output Data stored inside target OID\n");
     printf("-X            : Bypass Shielded Communication \n");
     printf("-h            : Print this help \n");
@@ -124,7 +125,6 @@ static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
         }
 
         psa_set_key_type(&attr, PSA_KEY_TYPE_HMAC);
-        psa_set_key_bits(&attr, (size_t)secret_key_len * 8u);
         psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_MESSAGE);
         psa_set_key_algorithm(&attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 
@@ -180,8 +180,6 @@ pal_status_t CalcHMAC(const uint8_t * secret_key,
 }
 
 pal_status_t pal_return_status;
-uint16_t offset, bytes_to_read,bytes_to_read1;
-uint8_t read_data_buffer[100];
 
 /**
  * Optional data
@@ -224,10 +222,10 @@ int main (int argc, char **argv)
 
     uint16_t secret_oid = 0xF1D0;// default secret OID;
     uint16_t target_oid = 0xF1D5;// default target OID;
-    uint8_t hmac_type=0x20;// default HMAC_SHA256
-    uint16_t offset, bytes_to_read,bytes_to_read1;
-    uint8_t read_data_buffer[100];
     uint8_t user_secret[64] = {0};
+    uint8_t hmac_type = (uint8_t)OPTIGA_HMAC_SHA_256;// default HMAC_SHA256
+    uint16_t offset, bytes_to_read, bytes_to_read1;
+    uint8_t read_data_buffer[2048];
     
     char *inFile = NULL;
     char *secFile = NULL;
@@ -339,7 +337,13 @@ int main (int argc, char **argv)
             
             {
                 uint32_t secret_len_tmp = 0;
-                trustmReadDER(user_secret, &secret_len_tmp, secFile);
+                if (trustmReadDER(user_secret, &secret_len_tmp, secFile) != 0 ||
+                    secret_len_tmp == 0 ||
+                    secret_len_tmp > sizeof(user_secret))
+                {
+                    printf("Failed to read secret file: %s\n", secFile);
+                    break;
+                }
                 bytes_to_read1 = (uint16_t)secret_len_tmp;
             }
             printf("Input secret : \n");
@@ -443,7 +447,13 @@ int main (int argc, char **argv)
                 }
                 {
                     uint32_t data_len_tmp = 0;
-                    trustmReadDER(read_data_buffer, &data_len_tmp, inFile);
+                    if (trustmReadDER(read_data_buffer, &data_len_tmp, inFile) != 0 ||
+                        data_len_tmp == 0 ||
+                        data_len_tmp > sizeof(read_data_buffer))
+                    {
+                        printf("Failed to read input file: %s\n", inFile);
+                        break;
+                    }
                     bytes_to_read = (uint16_t)data_len_tmp;
                 }
                 printf("Input data : \n");
