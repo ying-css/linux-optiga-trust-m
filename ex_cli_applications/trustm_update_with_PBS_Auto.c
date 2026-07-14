@@ -24,6 +24,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/time.h>
@@ -33,18 +34,27 @@
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/asn1.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 #include "optiga_util.h"
 #include "optiga_crypt.h"
 #include "pal_os_datastore.h"
 #include "pal_os_memory.h"
 #include "pal_crypt.h"
-#include "mbedtls/ccm.h"
-#include "mbedtls/md.h"
-#include "mbedtls/ssl.h"
+
 
 #include "trustm_helper.h"
 
+#include "mbedtls/version.h"
+#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x04000000
+#include <psa/crypto.h>
+#else
+#include "mbedtls/ccm.h"
+#include "mbedtls/md.h"
+#include "mbedtls/ssl.h"
+#endif
+#define PSA_CRYPT_SHA256_SIZE           (32U)
 typedef struct _OPTFLAG {   
     uint16_t    write       : 1;
     uint16_t    read        : 1;
@@ -102,57 +112,90 @@ uint8_t hmac_buffer[32] = {0x00};
 
 static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
                                    uint16_t hmac_type,
-                                   const uint8_t * secret_key,
+                                   const uint8_t *secret_key,
                                    uint16_t secret_key_len,
-                                   const uint8_t * input_data,
+                                   const uint8_t *input_data,
                                    uint32_t input_data_length,
-                                   uint8_t * hmac)
+                                   uint8_t *hmac)
 {
+    (void)p_pal_crypt;
     pal_status_t return_value = PAL_STATUS_FAILURE;
-
-    const mbedtls_md_info_t * hmac_info;
-    mbedtls_md_type_t digest_type;
-    
-    do
-    {
 #ifdef OPTIGA_LIB_DEBUG_NULL_CHECK
-        if ((NULL == input_data) || (NULL == hmac))
-        {
+    if (secret_key == NULL || input_data == NULL || hmac == NULL){
+        return PAL_STATUS_FAILURE;
+    }
+#endif // OPTIGA_LIB_DEBUG_NULL_CHECK
+    do{
+#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x04000000
+        psa_status_t status;
+        psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+        psa_key_id_t key_id = 0;
+        size_t mac_len = 0;
+        
+        status = psa_crypto_init();
+        if (status != PSA_SUCCESS){
             break;
         }
-#endif  //OPTIGA_LIB_DEBUG_NULL_CHECK
-
-        digest_type = (((uint16_t)OPTIGA_HMAC_SHA_256 == hmac_type)? MBEDTLS_MD_SHA256: MBEDTLS_MD_SHA384);
         
-        hmac_info = mbedtls_md_info_from_type(digest_type);
-
-        if (0 != mbedtls_md_hmac(hmac_info, secret_key, secret_key_len, input_data, input_data_length, hmac))
-        {
+        /* These apps use SHA-256 only */
+        if ((uint16_t)OPTIGA_HMAC_SHA_256 != hmac_type){
             break;
         }
-        
+
+        psa_set_key_type(&attr, PSA_KEY_TYPE_HMAC);
+        psa_set_key_bits(&attr, (size_t)secret_key_len * 8u);
+        psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_SIGN_MESSAGE);
+        psa_set_key_algorithm(&attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+
+        status = psa_import_key(&attr, secret_key, (size_t)secret_key_len, &key_id);
+        psa_reset_key_attributes(&attr);
+        if (status != PSA_SUCCESS){
+            break;
+        }
+        status = psa_mac_compute(key_id,
+                                PSA_ALG_HMAC(PSA_ALG_SHA_256),
+                                input_data,
+                                (size_t)input_data_length,
+                                hmac,
+                                PSA_CRYPT_SHA256_SIZE,
+                                &mac_len);
+
+        psa_destroy_key(key_id);
+
+        if (status != PSA_SUCCESS || mac_len != PSA_CRYPT_SHA256_SIZE){
+            break;
+        }
         return_value = PAL_STATUS_SUCCESS;
+#else
+        const mbedtls_md_info_t * hmac_info;
+        if ((uint16_t)OPTIGA_HMAC_SHA_256 != hmac_type){
+            break;
+        }
+        hmac_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
 
-    } while (FALSE);
-
+        if (0 != mbedtls_md_hmac(hmac_info, secret_key, secret_key_len, input_data, input_data_length, hmac)){
+            break;
+        }
+        return_value = PAL_STATUS_SUCCESS;
+#endif
+    } while(FALSE); 
     return return_value;
 }
 
-pal_status_t CalcHMAC(const uint8_t * secret_key,
-                           uint16_t secret_key_len,
-                           const uint8_t * input_data,
-                           uint32_t input_data_length,
-                           uint8_t * hmac)
+pal_status_t CalcHMAC(const uint8_t *secret_key,
+                      uint16_t secret_key_len,
+                      const uint8_t *input_data,
+                      uint32_t input_data_length,
+                      uint8_t *hmac)
 {
-    return(pal_crypt_hmac(NULL,
+    return pal_crypt_hmac(NULL,
                           (uint16_t)OPTIGA_HMAC_SHA_256,
                           secret_key,
                           secret_key_len,
                           input_data,
                           input_data_length,
-                          hmac));
+                          hmac);
 }
-
 
 static void _helpmenu(void)
 {
@@ -214,6 +257,7 @@ int main (int argc, char **argv)
 /***************************************************************
  * Getting Input from CLI
  **************************************************************/
+    
     uOptFlag.all = 0;
     printf("\n");
     do // Begin of DO WHILE(FALSE) for error handling.
@@ -543,8 +587,23 @@ int main (int argc, char **argv)
                 if (ret == 0)
                 {
                     uint8_t *pCert = NULL;
-                    bytes_to_read = i2d_X509(x509Cert, &pCert);
-                    pal_os_memcpy(read_data_buffer, pCert, bytes_to_read);
+                    int cert_len = i2d_X509(x509Cert, &pCert);
+                    if (cert_len <= 0 || pCert == NULL)
+                    {
+                        printf("i2d_X509 failed for %s\n", inFile);
+                        if (pCert != NULL) OPENSSL_free(pCert);
+                        break;
+                    }
+                    if ((size_t)cert_len > sizeof(read_data_buffer))
+                    {
+                        printf("Cert too large (%d bytes) for buffer (%zu)\n",
+                               cert_len, sizeof(read_data_buffer));
+                        OPENSSL_free(pCert);
+                        break;
+                    }
+                    pal_os_memcpy(read_data_buffer, pCert, (size_t)cert_len);
+                    bytes_to_read = (uint32_t)cert_len;
+                    OPENSSL_free(pCert);
                 }
                 else
                 {
@@ -554,11 +613,19 @@ int main (int argc, char **argv)
             }
             else
             {
-                    bytes_to_read = 0;
-                    for (size_t count = 0; count < sizeof(inValue); count++) {
-                    sscanf(inValue, "%2hhx", &read_data_buffer[count]);
-                    inValue += 2;
-                    bytes_to_read++;
+                bytes_to_read = 0;
+                {
+                    size_t in_len = (inValue != NULL) ? strlen(inValue) : 0;
+                    size_t max_bytes = sizeof(read_data_buffer);
+                    size_t n_bytes = (in_len / 2u);
+                    if (n_bytes > max_bytes) {
+                        n_bytes = max_bytes;
+                    }
+                    for (size_t count = 0; count < n_bytes; count++) {
+                        sscanf(inValue, "%2hhx", &read_data_buffer[count]);
+                        inValue += 2;
+                        bytes_to_read++;
+                    }
                 }
             }
 
@@ -611,6 +678,7 @@ int main (int argc, char **argv)
                 break;
             //Wait until the optiga_util_read_metadata operation is completed
             trustm_WaitForCompletion(BUSY_WAIT_TIME_OUT);
+            return_status = optiga_lib_status;
             if (return_status != OPTIGA_LIB_SUCCESS) 
                 break;
         }

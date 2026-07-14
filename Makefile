@@ -26,6 +26,24 @@
 
 TRUSTM = trustm_lib
 
+.DEFAULT_GOAL := all
+# Select which mbedTLS tree to compile from trustm_lib/external/
+# Usage: change in the installation script for changing version
+MBEDTLS_VARIANT ?= 4
+
+ifeq ($(MBEDTLS_VARIANT),4)
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-4.x
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_4.x_default_config.h
+TF_PSA_CONFIG := $(TRUSTM)/config/tf_psa_default_config.h
+TF_PSA_DIR := $(MBEDTLS_DIR)/tf-psa-crypto
+else ifeq ($(MBEDTLS_VARIANT),3)
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-3.x
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_3.x_default_config.h
+else
+MBEDTLS_DIR := $(TRUSTM)/external/mbedtls
+MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_default_config.h
+endif
+
 BUILD_FOR_ULTRA96 = NO
 USE_LIBGPIOD_RPI = YES
 
@@ -35,8 +53,16 @@ LIBDIR += $(TRUSTM)/src/crypt
 LIBDIR += $(TRUSTM)/src/comms
 LIBDIR += $(TRUSTM)/src/common
 LIBDIR += $(TRUSTM)/src/cmd
-LIBDIR += $(TRUSTM)/external/mbedtls/library
+LIBDIR += $(MBEDTLS_DIR)/library
 LIBDIR += trustm_helper
+ifeq ($(MBEDTLS_VARIANT),4)
+LIBDIR += $(TF_PSA_DIR)/core
+LIBDIR += $(TF_PSA_DIR)/platform
+LIBDIR += $(TF_PSA_DIR)/utilities
+LIBDIR += $(TF_PSA_DIR)/extras
+LIBDIR += $(TF_PSA_DIR)/drivers/builtin/src
+endif
+
 
 ARCH := $(shell dpkg --print-architecture)
 BINDIR = bin
@@ -59,10 +85,19 @@ INCDIR += $(TRUSTM)/extras/pal/linux
 INCDIR += $(TRUSTM)/extras/pal/linux/include
 INCDIR += trustm_helper/include
 INCDIR += trustm_provider
-INCDIR += $(TRUSTM)/external/mbedtls/include
-#INCDIR += $(TRUSTM)/external/mbedtls/include/mbedtls
+INCDIR += $(MBEDTLS_DIR)/include
 INCDIR += $(TRUSTM)/config
-
+ifeq ($(MBEDTLS_VARIANT),4) 
+INCDIR += $(MBEDTLS_DIR)/library
+INCDIR += $(TF_PSA_DIR)/include
+INCDIR += $(TF_PSA_DIR)/utilities
+INCDIR += $(TF_PSA_DIR)/dispatch
+INCDIR += $(TF_PSA_DIR)/platform
+INCDIR += $(TF_PSA_DIR)/drivers/builtin/include
+INCDIR += $(TF_PSA_DIR)/drivers/builtin/src
+INCDIR += $(TF_PSA_DIR)/core
+INCDIR += $(TF_PSA_DIR)/extras
+endif
 
 ifdef INCDIR
 INCSRC := $(shell find $(INCDIR) -name '*.h')
@@ -85,8 +120,12 @@ ifdef LIBDIR
         	LIBSRC += $(PALDIR)/pal_os_lock.c
 	        LIBSRC += $(PALDIR)/pal_os_timer.c
 	        LIBSRC += $(PALDIR)/pal_os_memory.c
-			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c       	
-			LIBSRC += $(TRUSTM)/extras/pal/linux/pal_shared_mutex.c       	
+			ifeq ($(MBEDTLS_VARIANT),4)
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_psa.c
+			else
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c   
+			endif 	
+			LIBSRC += $(TRUSTM)/extras/pal/linux/pal_shared_mutex.c    
         	ifeq ($(USE_LIBGPIOD_RPI), YES)
 	                LIBSRC += $(PALDIR)/target/gpiod/pal_ifx_i2c_config.c
         	endif
@@ -138,7 +177,10 @@ ifeq ($(USE_LIBGPIOD_RPI), YES)
 endif
 #CFLAGS += -DENGINE_DYNAMIC_SUPPORT
 CFLAGS += -DOPTIGA_COMMS_SET_RESET_SOFT
-CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../../trustm_lib/config/mbedtls_default_config.h\"
+CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../../$(MBEDTLS_CONFIG)\"
+ifeq ($(MBEDTLS_VARIANT),4)
+CFLAGS += -DTF_PSA_CRYPTO_USER_CONFIG_FILE=\"../../../../$(TF_PSA_CONFIG)\"
+endif
 
 LDFLAGS += -lpthread
 LDFLAGS += -lssl
@@ -158,8 +200,8 @@ LDFLAGS_2 += -lcrypto
 
 .Phony : install uninstall all clean
 
-all : $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
 
+all : $(BINDIR)/$(LIB) $(APPS) $(BINDIR)/$(PROVIDER)
 
 install:
 	@echo "Create symbolic link to the openssl provider $(PROVIDER_INSTALL_DIR)/$(PROVIDER)"
@@ -194,18 +236,25 @@ $(BINDIR)/$(PROVIDER): %: $(PROVOBJ) $(INCSRC) $(BINDIR)/$(LIB)
 	@mkdir -p bin
 	@$(CC)   $(PROVOBJ) $(LDFLAGS) $(LDFLAGS_1) $(LDFLAGS_2)  -shared -o $@
 	
-$(APPS): %: $(OTHOBJ) $(INCSRC) $(BINDIR)/$(LIB) %.o
+$(APPS): %: $(OTHOBJ) $(INCSRC) $(BINDIR)/$(LIB) %.o 
 			@echo "******* Linking $@ "
 			@mkdir -p bin
 			@$(CC) $@.o $(LDFLAGS_1) $(LDFLAGS) $(OTHOBJ) -o $@
 			@mv $@ bin/.	
 
-$(BINDIR)/$(LIB): %: $(LIBOBJ) $(INCSRC)
-	@echo "******* Linking $@ "
+$(BINDIR)/$(LIB): %: $(LIBOBJ) $(INCSRC) 
 	@mkdir -p bin
 	@$(CC) $(LIBOBJ) $(LDFLAGS)  -shared -o $@
 
-$(LIBOBJ): %.o: %.c $(INCSRC)
+$(LIBOBJ): %.o: %.c $(INCSRC) 
 	@echo "+++++++ Generating lib object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
+	
+$(APPOBJ): %.o: %.c $(INCSRC) 
+	@echo "+++++++ Generating app object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
+    
+$(PROVOBJ): %.o: %.c $(INCSRC) 
+	@echo "+++++++ Generating provider object: $< "
 	@$(CC) $(CFLAGS) $< -o $@
 
