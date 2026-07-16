@@ -26,6 +26,7 @@ make -j5 MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
 sudo make install MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
 echo "-----> Build Protected Update Set tool"
 cd ex_protected_update_data_set/Linux/
-make clean
-make -j5 
-sudo make install 
+sudo make uninstall MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
+make clean MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
+make -j5 MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
+sudo make install MBEDTLS_VARIANT="$MBEDTLS_VARIANT"
