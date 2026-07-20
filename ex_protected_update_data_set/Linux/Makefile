@@ -28,25 +28,13 @@ ARCH := $(shell dpkg --print-architecture)
 BINDIR = bin
 APPDIR = .
 
-# Select which Mbed TLS tree to build.
-# MBEDTLS_VARIANT = 4 -> Mbed TLS 4.x + TF-PSA-Crypto (default)
-# MBEDTLS_VARIANT = 3 -> Mbed TLS 3.x
-# MBEDTLS_VARIANT = 2 -> legacy submodule (external/mbedtls)
-MBEDTLS_VARIANT ?= 4
+# Always choose mbedtls 4.x to build
 TRUSTM = ../../trustm_lib
 
-ifeq ($(MBEDTLS_VARIANT),4)
 MBEDTLS_LIB    := $(TRUSTM)/external/mbedtls-4.x
 TF_PSA_DIR     := $(MBEDTLS_LIB)/tf-psa-crypto
 MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_4.x_default_config.h
 TF_PSA_CONFIG  := $(TRUSTM)/config/tf_psa_default_config.h
-else ifeq ($(MBEDTLS_VARIANT),3)
-MBEDTLS_LIB    := $(TRUSTM)/external/mbedtls-3.x
-MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_3.x_default_config.h
-else
-MBEDTLS_LIB    := $(TRUSTM)/external/mbedtls
-MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_default_config.h
-endif
 
 ifeq ($(ARCH), arm64)
 LIB_INSTALL_DIR = /usr/lib/aarch64-linux-gnu
@@ -59,7 +47,6 @@ INCDIR += ../include/pal
 INCDIR += $(MBEDTLS_LIB)/include
 INCDIR += $(MBEDTLS_LIB)/include/mbedtls
 INCDIR += $(TRUSTM)/config
-ifeq ($(MBEDTLS_VARIANT),4)
 INCDIR += $(MBEDTLS_LIB)/library
 INCDIR += $(TF_PSA_DIR)/include
 INCDIR += $(TF_PSA_DIR)/utilities
@@ -69,20 +56,18 @@ INCDIR += $(TF_PSA_DIR)/drivers/builtin/include
 INCDIR += $(TF_PSA_DIR)/drivers/builtin/src
 INCDIR += $(TF_PSA_DIR)/core
 INCDIR += $(TF_PSA_DIR)/extras
-endif
+
 
 
 
 LIBDIR = ../src
 LIBDIR += ../pal
 LIBDIR += $(MBEDTLS_LIB)/library
-ifeq ($(MBEDTLS_VARIANT),4)
 LIBDIR += $(TF_PSA_DIR)/core
 LIBDIR += $(TF_PSA_DIR)/platform
 LIBDIR += $(TF_PSA_DIR)/utilities
 LIBDIR += $(TF_PSA_DIR)/extras
 LIBDIR += $(TF_PSA_DIR)/drivers/builtin/src
-endif
 
 
 ifdef INCDIR
@@ -95,11 +80,7 @@ ifdef LIBDIR
 	# Select the correct PAL crypt for the requested Mbed TLS variant.
 	# pal_crypt_psa.c targets Mbed TLS 4.x / TF-PSA-Crypto (PSA Crypto API),
 	# whereas the original pal_crypt_mbedtls.c targets Mbed TLS 2.x / 3.x.
-	ifeq ($(MBEDTLS_VARIANT),4)
 	LIBSRC := $(filter-out %/pal_crypt_mbedtls.c,$(LIBSRC))
-	else
-	LIBSRC := $(filter-out %/pal_crypt_psa.c,$(LIBSRC))
-	endif
 	LIBOBJ := $(patsubst %.c,%.o,$(LIBSRC))
 	LIB = libtrustm_update.so
 endif
@@ -128,10 +109,9 @@ CFLAGS += -Wno-pointer-sign
 ifeq ($(ARCH), arm64)
 CFLAGS += -fPIC
 endif
-ifeq ($(MBEDTLS_VARIANT),4)
 CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../$(MBEDTLS_CONFIG)\"
 CFLAGS += -DTF_PSA_CRYPTO_USER_CONFIG_FILE=\"../../$(TF_PSA_CONFIG)\"
-endif
+
 
 LDFLAGS += -lpthread
 
