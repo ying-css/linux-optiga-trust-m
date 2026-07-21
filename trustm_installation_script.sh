@@ -4,9 +4,9 @@ sudo apt -y install git gcc build-essential libssl-dev gpiod libgpiod-dev curl x
 
 
 
-# Configuration, choose the version of mbedTLS
 set -e
 echo "-----> Build Trust M Linux Tools and provider"
+#Generate necessary file for mbedtls-4.x and tf-psa-1.x
 (
     echo "-----> Generate mbedtls config files" 
     cd trustm_lib/external/mbedtls-4.x 
@@ -17,7 +17,7 @@ echo "-----> Build Trust M Linux Tools and provider"
     cd trustm_lib/external/mbedtls-4.x/tf-psa-crypto \ 
     python3 framework/scripts/make_generated_files.py
 )
-fi
+
 sudo make uninstall 
 make clean 
 make -j5 
