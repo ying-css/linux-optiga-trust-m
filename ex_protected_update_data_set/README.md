@@ -188,32 +188,60 @@ Fragment number:[01], size:[021]
 
 Environment
 
-mbedTLS 4.x is used for crypto operations in this tool.
+TF-PSA-Crypto 1.1.0 is used for crypto operations in this tool (hashing, signing,
+key derivation and AEAD are all performed via the PSA Crypto API). mbedTLS 4.x is
+only used as a thin bridge for parsing PEM-encoded private keys
+(`mbedtls_pk_parse_key`) and importing them into PSA
+(`mbedtls_pk_import_into_psa`).
 
-1. The following MACROs must be disabled/enabled when using mbedTLS for this tool.
+1. The following options must be enabled when building TF-PSA-Crypto / mbedTLS
+   for this tool.
 
-   i. Enable:
+   i. TF-PSA-Crypto (PSA API) — set in `psa/crypto_config.h` (or the project's
+      `tf_psa_default_config.h`):
+
+   ```
+   PSA_WANT_ALG_SHA_256
+   PSA_WANT_ALG_SHA_384
+   PSA_WANT_ALG_SHA_512
+   PSA_WANT_ALG_HMAC
+   PSA_WANT_ALG_HKDF
+   PSA_WANT_ALG_TLS12_PRF
+   PSA_WANT_ALG_CCM
+   PSA_WANT_ALG_ECDSA
+   PSA_WANT_ALG_DETERMINISTIC_ECDSA
+   PSA_WANT_ALG_RSA_PKCS1V15_SIGN
+   PSA_WANT_KEY_TYPE_AES
+   PSA_WANT_KEY_TYPE_HMAC
+   PSA_WANT_KEY_TYPE_DERIVE
+   PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
+   PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_BASIC
+   PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_IMPORT
+   PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY
+   PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_BASIC
+   PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_IMPORT
+   PSA_WANT_ECC_SECP_R1_256
+   PSA_WANT_ECC_SECP_R1_384
+   PSA_WANT_ECC_SECP_R1_521
+   ```
+
+   ii. mbedTLS 4.x (PK / PEM bridge) — set in `mbedtls/mbedtls_config.h`:
 
    ```
    MBEDTLS_FS_IO
    MBEDTLS_PEM_PARSE_C
    MBEDTLS_BASE64_C
-   MBEDTLS_ECDSA_DETERMINISTIC
-   MBEDTLS_HMAC_DRBG_C
-   MBEDTLS_ECDSA_DETERMINISTIC_DEBUG
-   MBEDTLS_RSA_C
-   MBEDTLS_PKCS1_V15
-   MBEDTLS_PK_RSA_ALT_SUPPORT
-   MBEDTLS_TIMING_C
-   MBEDTLS_ENTROPY_C
-   MBEDTLS_CTR_DRBG_C
-   MBEDTLS_ECP_DP_SECP256R1_ENABLED
-   MBEDTLS_ECP_DP_SECP384R1_ENABLED
-   MBEDTLS_ECP_DP_SECP521R1_ENABLED
-   MBEDTLS_ECP_DP_BP256R1_ENABLED
-   MBEDTLS_ECP_DP_BP384R1_ENABLED
-   MBEDTLS_ECP_DP_BP512R1_ENABLED
+   MBEDTLS_PK_C
+   MBEDTLS_PK_PARSE_C
+   MBEDTLS_PK_USE_PSA_EC_DATA
+   MBEDTLS_USE_PSA_CRYPTO
    ```
+
+   > Note: In mbedTLS 4.x the legacy `MBEDTLS_ECP_DP_*`, `MBEDTLS_RSA_C`,
+   > `MBEDTLS_PKCS1_V15`, `MBEDTLS_ECDSA_DETERMINISTIC`, `MBEDTLS_HMAC_DRBG_C`,
+   > `MBEDTLS_ENTROPY_C` and `MBEDTLS_CTR_DRBG_C` macros are no longer used —
+   > curve, hash, signature and RNG selection is driven entirely by the
+   > corresponding `PSA_WANT_*` options above.
 
 Limitations
 

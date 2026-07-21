@@ -43,7 +43,6 @@
 
 #include "pal_os_memory.h"
 #include "pal_crypt.h"
-#include "mbedtls/version.h"
 #include <psa/crypto.h>
 
 #define PSA_CRYPT_SHA256_SIZE           (32U)
