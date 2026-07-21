@@ -47,13 +47,8 @@
 #include "trustm_helper.h"
 
 #include "mbedtls/version.h"
-#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x04000000
 #include <psa/crypto.h>
-#else
-#include "mbedtls/ccm.h"
-#include "mbedtls/md.h"
-#include "mbedtls/ssl.h"
-#endif
+
 #define PSA_CRYPT_SHA256_SIZE           (32U)
 typedef struct _OPTFLAG {   
     uint16_t    write       : 1;
@@ -126,7 +121,6 @@ static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
     }
 #endif // OPTIGA_LIB_DEBUG_NULL_CHECK
     do{
-#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x04000000
         psa_status_t status;
         psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
         psa_key_id_t key_id = 0;
@@ -165,18 +159,6 @@ static pal_status_t pal_crypt_hmac(pal_crypt_t* p_pal_crypt,
             break;
         }
         return_value = PAL_STATUS_SUCCESS;
-#else
-        const mbedtls_md_info_t * hmac_info;
-        if ((uint16_t)OPTIGA_HMAC_SHA_256 != hmac_type){
-            break;
-        }
-        hmac_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-
-        if (0 != mbedtls_md_hmac(hmac_info, secret_key, secret_key_len, input_data, input_data_length, hmac)){
-            break;
-        }
-        return_value = PAL_STATUS_SUCCESS;
-#endif
     } while(FALSE); 
     return return_value;
 }

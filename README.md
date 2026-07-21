@@ -120,7 +120,6 @@ git clone --recurse-submodules https://github.com/Infineon/linux-optiga-trust-m.
 
 ### <a name="build_lib"></a>First time building the library
 Run the commands below in sequence to install the required dependencies and the OPTIGA™ Trust M provider. 
-> **Note:** Change the `MBEDTLS_VARIANT` variable in `trustm_installation_script.sh` to match the intended version before proceeding.
 
     cd linux-optiga-trust-m
     ./trustm_installation_script.sh

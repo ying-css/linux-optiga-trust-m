@@ -27,22 +27,12 @@
 TRUSTM = trustm_lib
 
 .DEFAULT_GOAL := all
-# Select which mbedTLS tree to compile from trustm_lib/external/
-# Usage: change in the installation script for changing version
-MBEDTLS_VARIANT ?= 4
+# Always choose the MBedTLS_4.x
 
-ifeq ($(MBEDTLS_VARIANT),4)
 MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-4.x
 MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_4.x_default_config.h
 TF_PSA_CONFIG := $(TRUSTM)/config/tf_psa_default_config.h
 TF_PSA_DIR := $(MBEDTLS_DIR)/tf-psa-crypto
-else ifeq ($(MBEDTLS_VARIANT),3)
-MBEDTLS_DIR := $(TRUSTM)/external/mbedtls-3.x
-MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_3.x_default_config.h
-else
-MBEDTLS_DIR := $(TRUSTM)/external/mbedtls
-MBEDTLS_CONFIG := $(TRUSTM)/config/mbedtls_default_config.h
-endif
 
 BUILD_FOR_ULTRA96 = NO
 USE_LIBGPIOD_RPI = YES
@@ -55,13 +45,12 @@ LIBDIR += $(TRUSTM)/src/common
 LIBDIR += $(TRUSTM)/src/cmd
 LIBDIR += $(MBEDTLS_DIR)/library
 LIBDIR += trustm_helper
-ifeq ($(MBEDTLS_VARIANT),4)
 LIBDIR += $(TF_PSA_DIR)/core
 LIBDIR += $(TF_PSA_DIR)/platform
 LIBDIR += $(TF_PSA_DIR)/utilities
 LIBDIR += $(TF_PSA_DIR)/extras
 LIBDIR += $(TF_PSA_DIR)/drivers/builtin/src
-endif
+
 
 
 ARCH := $(shell dpkg --print-architecture)
@@ -87,7 +76,6 @@ INCDIR += trustm_helper/include
 INCDIR += trustm_provider
 INCDIR += $(MBEDTLS_DIR)/include
 INCDIR += $(TRUSTM)/config
-ifeq ($(MBEDTLS_VARIANT),4) 
 INCDIR += $(MBEDTLS_DIR)/library
 INCDIR += $(TF_PSA_DIR)/include
 INCDIR += $(TF_PSA_DIR)/utilities
@@ -97,7 +85,6 @@ INCDIR += $(TF_PSA_DIR)/drivers/builtin/include
 INCDIR += $(TF_PSA_DIR)/drivers/builtin/src
 INCDIR += $(TF_PSA_DIR)/core
 INCDIR += $(TF_PSA_DIR)/extras
-endif
 
 ifdef INCDIR
 INCSRC := $(shell find $(INCDIR) -name '*.h')
@@ -120,11 +107,9 @@ ifdef LIBDIR
         	LIBSRC += $(PALDIR)/pal_os_lock.c
 	        LIBSRC += $(PALDIR)/pal_os_timer.c
 	        LIBSRC += $(PALDIR)/pal_os_memory.c
-			ifeq ($(MBEDTLS_VARIANT),4)
+
 			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_psa.c
-			else
-			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c   
-			endif 	
+
 			LIBSRC += $(TRUSTM)/extras/pal/linux/pal_shared_mutex.c    
         	ifeq ($(USE_LIBGPIOD_RPI), YES)
 	                LIBSRC += $(PALDIR)/target/gpiod/pal_ifx_i2c_config.c
@@ -178,9 +163,7 @@ endif
 #CFLAGS += -DENGINE_DYNAMIC_SUPPORT
 CFLAGS += -DOPTIGA_COMMS_SET_RESET_SOFT
 CFLAGS += -DMBEDTLS_USER_CONFIG_FILE=\"../../../$(MBEDTLS_CONFIG)\"
-ifeq ($(MBEDTLS_VARIANT),4)
 CFLAGS += -DTF_PSA_CRYPTO_USER_CONFIG_FILE=\"../../../../$(TF_PSA_CONFIG)\"
-endif
 
 LDFLAGS += -lpthread
 LDFLAGS += -lssl

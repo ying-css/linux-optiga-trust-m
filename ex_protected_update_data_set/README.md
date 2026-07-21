@@ -186,31 +186,37 @@ Fragment number:[01], size:[021]
     };
 ```
 
- Enviorment:
+Environment
 
-   mbedTLS 2.16.0 is used for crypto operation in this tool.
-	1. The following MACRO must be disabled/ enabled when using mbedTLS for this tool.
-		i. Enable :
-			MBEDTLS_FS_IO
-			MBEDTLS_PEM_PARSE_C
-			MBEDTLS_BASE64_C
-			MBEDTLS_ECDSA_DETERMINISTIC
-			MBEDTLS_HMAC_DRBG_C
-			MBEDTLS_ECDSA_DETERMINISTIC_DEBUG
-			MBEDTLS_RSA_C
-			MBEDTLS_PKCS1_V15
-			MBEDTLS_PK_RSA_ALT_SUPPORT
-			MBEDTLS_TIMING_C
-			MBEDTLS_ENTROPY_C
-			MBEDTLS_CTR_DRBG_C
-			MBEDTLS_ECP_DP_SECP256R1_ENABLED
-			MBEDTLS_ECP_DP_SECP384R1_ENABLED
-			MBEDTLS_ECP_DP_SECP521R1_ENABLED
-			MBEDTLS_ECP_DP_BP256R1_ENABLED
-			MBEDTLS_ECP_DP_BP384R1_ENABLED
-			MBEDTLS_ECP_DP_BP512R1_ENABLED
+mbedTLS 4.x is used for crypto operations in this tool.
+
+1. The following MACROs must be disabled/enabled when using mbedTLS for this tool.
+
+   i. Enable:
+
+   ```
+   MBEDTLS_FS_IO
+   MBEDTLS_PEM_PARSE_C
+   MBEDTLS_BASE64_C
+   MBEDTLS_ECDSA_DETERMINISTIC
+   MBEDTLS_HMAC_DRBG_C
+   MBEDTLS_ECDSA_DETERMINISTIC_DEBUG
+   MBEDTLS_RSA_C
+   MBEDTLS_PKCS1_V15
+   MBEDTLS_PK_RSA_ALT_SUPPORT
+   MBEDTLS_TIMING_C
+   MBEDTLS_ENTROPY_C
+   MBEDTLS_CTR_DRBG_C
+   MBEDTLS_ECP_DP_SECP256R1_ENABLED
+   MBEDTLS_ECP_DP_SECP384R1_ENABLED
+   MBEDTLS_ECP_DP_SECP521R1_ENABLED
+   MBEDTLS_ECP_DP_BP256R1_ENABLED
+   MBEDTLS_ECP_DP_BP384R1_ENABLED
+   MBEDTLS_ECP_DP_BP512R1_ENABLED
+   ```
 
 Limitations
 
 1. Only SHA-256 digest algorithm is supported for hash calculation
-2. Manifest version number is 1	
+2. Manifest version number is 1
+
