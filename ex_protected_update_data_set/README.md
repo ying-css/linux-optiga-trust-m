@@ -188,19 +188,19 @@ Fragment number:[01], size:[021]
 
 Environment
 
-TF-PSA-Crypto 1.1.0 is used for crypto operations in this tool (hashing, signing,
-key derivation and AEAD are all performed via the PSA Crypto API). mbedTLS 4.x is
-only used as a thin bridge for parsing PEM-encoded private keys
-(`mbedtls_pk_parse_key`) and importing them into PSA
-(`mbedtls_pk_import_into_psa`).
+TF-PSA-Crypto 1.1.0 is used for crypto operations in this tool.
 
-1. The following options must be enabled when building TF-PSA-Crypto / mbedTLS
-   for this tool.
-
-   i. TF-PSA-Crypto (PSA API) — set in `psa/crypto_config.h` (or the project's
-      `tf_psa_default_config.h`):
+The following MACRO must be disabled/enabled when using TF-PSA-Crypto / mbedTLS
+for this tool.
 
    ```
+   MBEDTLS_FS_IO
+   MBEDTLS_BASE64_C
+   MBEDTLS_PEM_PARSE_C
+   MBEDTLS_ASN1_PARSE_C
+   MBEDTLS_PK_C
+   MBEDTLS_PK_PARSE_C
+   MBEDTLS_USE_PSA_CRYPTO
    PSA_WANT_ALG_SHA_256
    PSA_WANT_ALG_SHA_384
    PSA_WANT_ALG_SHA_512
@@ -224,24 +224,6 @@ only used as a thin bridge for parsing PEM-encoded private keys
    PSA_WANT_ECC_SECP_R1_384
    PSA_WANT_ECC_SECP_R1_521
    ```
-
-   ii. mbedTLS 4.x (PK / PEM bridge) — set in `mbedtls/mbedtls_config.h`:
-
-   ```
-   MBEDTLS_FS_IO
-   MBEDTLS_PEM_PARSE_C
-   MBEDTLS_BASE64_C
-   MBEDTLS_PK_C
-   MBEDTLS_PK_PARSE_C
-   MBEDTLS_PK_USE_PSA_EC_DATA
-   MBEDTLS_USE_PSA_CRYPTO
-   ```
-
-   > Note: In mbedTLS 4.x the legacy `MBEDTLS_ECP_DP_*`, `MBEDTLS_RSA_C`,
-   > `MBEDTLS_PKCS1_V15`, `MBEDTLS_ECDSA_DETERMINISTIC`, `MBEDTLS_HMAC_DRBG_C`,
-   > `MBEDTLS_ENTROPY_C` and `MBEDTLS_CTR_DRBG_C` macros are no longer used —
-   > curve, hash, signature and RNG selection is driven entirely by the
-   > corresponding `PSA_WANT_*` options above.
 
 Limitations
 
