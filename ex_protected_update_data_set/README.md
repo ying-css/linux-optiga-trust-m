@@ -223,23 +223,24 @@ only used as a thin bridge for parsing PEM-encoded private keys
    PSA_WANT_ECC_SECP_R1_256
    PSA_WANT_ECC_SECP_R1_384
    PSA_WANT_ECC_SECP_R1_521
-   ```
-
-   ii. mbedTLS 4.x (PK / PEM bridge) — set in `mbedtls/mbedtls_config.h`:
-
-   ```
    MBEDTLS_FS_IO
    MBEDTLS_PEM_PARSE_C
    MBEDTLS_BASE64_C
    MBEDTLS_PK_C
    MBEDTLS_PK_PARSE_C
    MBEDTLS_PK_USE_PSA_EC_DATA
-   MBEDTLS_USE_PSA_CRYPTO
+   MBEDTLS_CTR_DRBG_C
+   ```
+
+   ii. mbedTLS 4.x — set in `mbedtls_4.x_default_config.h`:
+
+   ```
+   MBEDTLS_TIMING_C
    ```
 
    > Note: In mbedTLS 4.x the legacy `MBEDTLS_ECP_DP_*`, `MBEDTLS_RSA_C`,
-   > `MBEDTLS_PKCS1_V15`, `MBEDTLS_ECDSA_DETERMINISTIC`, `MBEDTLS_HMAC_DRBG_C`,
-   > `MBEDTLS_ENTROPY_C` and `MBEDTLS_CTR_DRBG_C` macros are no longer used —
+   > `MBEDTLS_PKCS1_V15`, `MBEDTLS_ECDSA_DETERMINISTIC`, `MBEDTLS_HMAC_DRBG_C`
+   > and `MBEDTLS_ENTROPY_C` macros are no longer used —
    > curve, hash, signature and RNG selection is driven entirely by the
    > corresponding `PSA_WANT_*` options above.
 
