@@ -78,11 +78,11 @@ ifdef LIBDIR
 	        LIBSRC += $(PALDIR)/pal_i2c.c
 			LIBSRC += $(PALDIR)/pal_logger.c
 			LIBSRC += $(PALDIR)/pal_os_datastore.c
-	        LIBSRC += $(PALDIR)/pal_os_event.c
+			LIBSRC += $(PALDIR)/pal_os_event.c     	
         	LIBSRC += $(PALDIR)/pal_os_lock.c
 	        LIBSRC += $(PALDIR)/pal_os_timer.c
 	        LIBSRC += $(PALDIR)/pal_os_memory.c
-			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_mbedtls.c       	
+			LIBSRC += $(TRUSTM)/extras/pal/pal_crypt_openssl.c       	
 			LIBSRC += $(TRUSTM)/extras/pal/linux/pal_shared_mutex.c       	
         	ifeq ($(USE_LIBGPIOD_RPI), YES)
 	                LIBSRC += $(PALDIR)/target/gpiod/pal_ifx_i2c_config.c
@@ -191,3 +191,10 @@ $(LIBOBJ): %.o: %.c $(INCSRC)
 	@echo "+++++++ Generating lib object: $< "
 	@$(CC) $(CFLAGS) $< -o $@
 
+$(APPOBJ): %.o: %.c $(INCSRC) 
+	@echo "+++++++ Generating app object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
+
+$(PROVOBJ): %.o: %.c $(INCSRC) 
+	@echo "+++++++ Generating provider object: $< "
+	@$(CC) $(CFLAGS) $< -o $@
